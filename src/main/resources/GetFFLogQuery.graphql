@@ -1,0 +1,11 @@
+type Query {
+    characterData: CharacterData
+}
+
+type CharacterData {
+    character(name: String,  serverRegion: String, serverSlug: String): Character
+}
+
+type Character {
+    zoneRankings: String
+}

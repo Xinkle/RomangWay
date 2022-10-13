@@ -1,0 +1,7 @@
+query GetFFlogQuery($name: String, $server: String) {
+	characterData {
+		character(name: $name, serverRegion: "KR", serverSlug: $server) {
+			zoneRankings
+		}
+	}
+}
