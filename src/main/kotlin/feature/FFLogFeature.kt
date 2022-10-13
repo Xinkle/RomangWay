@@ -1,12 +1,12 @@
 package feature
 
+import Prop
 import com.expediagroup.graphql.client.serialization.GraphQLClientKotlinxSerializer
 import com.expediagroup.graphql.client.types.GraphQLClientRequest
 import creat.xinkle.Romangway.GetFFlogQuery
 import dev.kord.core.Kord
 import dev.kord.core.behavior.interaction.response.respond
-import dev.kord.core.event.interaction.GuildChatInputCommandInteractionCreateEvent
-import dev.kord.core.on
+import dev.kord.core.entity.interaction.GuildChatInputCommandInteraction
 import dev.kord.rest.builder.interaction.string
 import feature.model.FFlogRanking
 import feature.model.FFlogRankingSummary
@@ -34,9 +34,7 @@ import java.net.URL
 import kotlin.coroutines.CoroutineContext
 import kotlin.properties.Delegates
 
-private const val COMMAND_FFLOG = "fflog"
-
-class FFLogFeature(val kord: Kord) : CoroutineScope {
+class FFLogFeature(private val kord: Kord) : CoroutineScope, GuildChatInputCommandInteractionListener {
     override val coroutineContext: CoroutineContext
         get() = SupervisorJob()
 
@@ -51,46 +49,47 @@ class FFLogFeature(val kord: Kord) : CoroutineScope {
         "모그리" to "Moogle"
     )
 
+    override val command: String = "로그"
+
+    override suspend fun onGuildChatInputCommand(interaction: GuildChatInputCommandInteraction) {
+        val response = interaction.deferPublicResponse()
+        val command = interaction.command
+
+        try {
+            val name = command.strings["이름"]!!
+            val server = command.strings["서버"]!!
+            val mappedServer = serverMapping[server]
+
+            requireNotNull(mappedServer) { "서버 이름이 올바르지 않습니다." }
+
+            val ranking = getFFlog(name, mappedServer)
+
+            response.respond {
+                content = FFlogRankingSummary.fromRanking(ranking, name, server).toString()
+            }
+        } catch (e: Exception) {
+            println("Error occurred -> $e")
+
+            response.respond {
+                content = "알수없는 오류가 발생했어요..."
+            }
+        }
+    }
+
     init {
-        println("$COMMAND_FFLOG module registered!")
+        println("$command module registered!")
 
         launch {
             refreshToken()
 
             kord.createGlobalChatInputCommand(
-                COMMAND_FFLOG, "프프로그 정보를 가져옵니다."
+                command, "프프로그 정보를 가져옵니다."
             ) {
                 string("이름", "가져올 유저의 이름.") {
                     required = true
                 }
                 string("서버", "가져올 유저의 서버") {
                     required = true
-                }
-            }
-
-            kord.on<GuildChatInputCommandInteractionCreateEvent> {
-                val command = interaction.command
-                if (command.data.name.value == COMMAND_FFLOG) {
-                    val response = interaction.deferPublicResponse()
-                    try {
-                        val name = command.strings["이름"]!!
-                        val server = command.strings["서버"]!!
-                        val mappedServer = serverMapping[server]
-
-                        requireNotNull(mappedServer) { "서버 이름이 올바르지 않습니다." }
-
-                        val ranking = getFFlog(name, mappedServer)
-
-                        response.respond {
-                            content = FFlogRankingSummary.fromRanking(ranking, name, server).toString()
-                        }
-                    } catch (e: Exception) {
-                        println("Error occurred -> $e")
-
-                        response.respond {
-                            content = "알수없는 오류가 발생했어요..."
-                        }
-                    }
                 }
             }
         }
@@ -119,8 +118,8 @@ class FFLogFeature(val kord: Kord) : CoroutineScope {
         val tokenInfo: TokenInfo =
             tokenClient.submitForm(url = "https://www.fflogs.com/oauth/token", formParameters = Parameters.build {
                 append("grant_type", "client_credentials")
-                append("client_id", "97699ea7-10ce-4f66-a7cc-f650f1a9829a")
-                append("client_secret", "JiWDZUiiM3u9hFPdGalFQsAa82HbLxVhRlHq9WFm")
+                append("client_id", Prop.getFFlogClientId())
+                append("client_secret", Prop.getFFLogClientSecret())
             }).body()
 
         println(tokenInfo)
