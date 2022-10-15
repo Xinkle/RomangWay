@@ -1,11 +1,11 @@
-import database.NameTeachingTable
+import database.CommandTeachingTable
 import dev.kord.core.Kord
 import dev.kord.core.event.interaction.GuildChatInputCommandInteractionCreateEvent
 import dev.kord.core.on
 import dev.kord.gateway.Intent
 import dev.kord.gateway.PrivilegedIntent
+import feature.CommandTeachingFeature
 import feature.FFLogFeature
-import feature.NameTeachingFeature
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.withContext
@@ -24,19 +24,19 @@ suspend fun main() = withContext(Dispatchers.IO) {
     }
 
     val fflogFeature = FFLogFeature(kord)
-    val nameTeachingFeature = NameTeachingFeature(kord)
+    val commandTeachingFeature = CommandTeachingFeature(kord)
 
     kord.on<GuildChatInputCommandInteractionCreateEvent> {
         val command = interaction.command
 
-        listOf(fflogFeature, nameTeachingFeature)
+        listOf(fflogFeature, commandTeachingFeature)
             .first { it.command == command.data.name.value }
             .onGuildChatInputCommand(interaction)
     }
 
     transaction {
         addLogger(StdOutSqlLogger)
-        SchemaUtils.create(NameTeachingTable)
+        SchemaUtils.create(CommandTeachingTable)
     }
 
     kord.login {
