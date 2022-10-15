@@ -28,6 +28,8 @@ class CommandTeachingFeature(private val kord: Kord) : CoroutineScope, GuildChat
             println("New command register requested!")
 
             val writer = interaction.user.memberData.nick.value ?: interaction.user.data.username
+            val writerId = interaction.user.id
+
             println("Writer -> ${interaction.user.memberData}")
 
             val commandName = command.strings["이름"]!!.trimStart('!')
@@ -46,7 +48,7 @@ class CommandTeachingFeature(private val kord: Kord) : CoroutineScope, GuildChat
             }
 
             response.respond {
-                content = "$commandName... 기억할게요 ${writer}님!"
+                content = "$commandName... 기억할게요 <@${writerId}>님!"
             }
         } catch (e: Exception) {
             println("Error occurred -> $e")
