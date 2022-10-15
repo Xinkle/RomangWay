@@ -1,7 +1,8 @@
 package feature
 
-import database.NameTeaching
-import database.NameTeachingTable
+import database.CommandTeaching
+import database.findCommand
+import database.findSimilarCommands
 import dev.kord.core.Kord
 import dev.kord.core.behavior.interaction.response.respond
 import dev.kord.core.entity.interaction.GuildChatInputCommandInteraction
@@ -11,12 +12,10 @@ import dev.kord.rest.builder.interaction.string
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
-import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
-import org.jetbrains.exposed.sql.SqlExpressionBuilder.like
 import org.jetbrains.exposed.sql.transactions.transaction
 import kotlin.coroutines.CoroutineContext
 
-class NameTeachingFeature(private val kord: Kord) : CoroutineScope, GuildChatInputCommandInteractionListener {
+class CommandTeachingFeature(private val kord: Kord) : CoroutineScope, GuildChatInputCommandInteractionListener {
     override val coroutineContext: CoroutineContext
         get() = SupervisorJob()
 
@@ -26,17 +25,17 @@ class NameTeachingFeature(private val kord: Kord) : CoroutineScope, GuildChatInp
         val response = interaction.deferPublicResponse()
 
         try {
-            println("New register requested!")
+            println("New command register requested!")
 
             val writer = interaction.user.memberData.nick.value ?: interaction.user.data.username
             println("Writer -> ${interaction.user.memberData}")
 
-            val name = command.strings["이름"]!!.trimStart('!')
-            val modifiedName = "!$name"
+            val commandName = command.strings["이름"]!!.trimStart('!')
+            val modifiedName = "!$commandName"
             val description = command.strings["설명"]!!
 
             transaction {
-                val newRecord = NameTeaching.new {
+                val newRecord = CommandTeaching.new {
                     this.name = modifiedName
                     this.description = description
                     this.writer = writer
@@ -47,7 +46,7 @@ class NameTeachingFeature(private val kord: Kord) : CoroutineScope, GuildChatInp
             }
 
             response.respond {
-                content = "$name... 기억할게요 ${writer}님!"
+                content = "$commandName... 기억할게요 ${writer}님!"
             }
         } catch (e: Exception) {
             println("Error occurred -> $e")
@@ -76,20 +75,15 @@ class NameTeachingFeature(private val kord: Kord) : CoroutineScope, GuildChatInp
                 // ignore other bots, even ourselves. We only serve humans here!
                 if (message.author?.isBot != false) return@on
 
-                // check if our command is being invoked
-                if (message.content.startsWith("!")) {
-                    transaction {
-                        NameTeaching.find(NameTeachingTable.name eq message.content).firstOrNull()
-                    }?.also {
+                val commandName = message.content
+
+                if (commandName.startsWith("!")) {
+                    findCommand(commandName)?.also {
                         message.channel.createMessage(it.description)
                         return@on
                     }
 
-                    val likeContentQuery = "%${message.content.drop(1)}%"
-
-                    transaction {
-                        NameTeaching.find(NameTeachingTable.name like likeContentQuery).toList()
-                    }.also { similarNameList ->
+                    findSimilarCommands(commandName).also { similarNameList ->
                         if (similarNameList.isNotEmpty()) {
                             val responseMessage = StringBuilder()
                                 .appendLine("그런 명령어는 없어요 혹시 아래의 명령어를 찾으시나요?")
