@@ -7,6 +7,7 @@ import creat.xinkle.Romangway.GetFFlogQuery
 import dev.kord.core.Kord
 import dev.kord.core.behavior.interaction.response.respond
 import dev.kord.core.entity.interaction.GuildChatInputCommandInteraction
+import dev.kord.rest.builder.interaction.boolean
 import dev.kord.rest.builder.interaction.string
 import feature.model.FFlogRanking
 import feature.model.FFlogRankingSummary
@@ -34,6 +35,10 @@ import java.net.URL
 import kotlin.coroutines.CoroutineContext
 import kotlin.properties.Delegates
 
+private const val ARGUMENT_NAME = "이름"
+private const val ARGUMENT_SERVER = "서버"
+private const val ARGUMENT_EXPOSABLE = "공개여부"
+
 class FFLogFeature(private val kord: Kord) : CoroutineScope, GuildChatInputCommandInteractionListener {
     override val coroutineContext: CoroutineContext
         get() = SupervisorJob()
@@ -48,18 +53,23 @@ class FFLogFeature(private val kord: Kord) : CoroutineScope, GuildChatInputComma
         "펜리르" to "Fenrir",
         "모그리" to "Moogle"
     )
-
-    override val command: String = "로그"
+    override val command: String = "프프로그"
 
     override suspend fun onGuildChatInputCommand(interaction: GuildChatInputCommandInteraction) {
-        val response = interaction.deferPublicResponse()
         val command = interaction.command
 
-        try {
-            val name = command.strings["이름"]!!
-            val server = command.strings["서버"]!!
-            val mappedServer = serverMapping[server]
+        val name = command.strings[ARGUMENT_NAME]!!
+        val server = command.strings[ARGUMENT_SERVER]!!
+        val isExposable = command.booleans[ARGUMENT_EXPOSABLE]!!
+        val mappedServer = serverMapping[server]
 
+        val response = if (isExposable) {
+            interaction.deferPublicResponse()
+        } else {
+            interaction.deferEphemeralResponse()
+        }
+
+        try {
             requireNotNull(mappedServer) { "서버 이름이 올바르지 않습니다." }
 
             val ranking = getFFlog(name, mappedServer)
@@ -85,10 +95,13 @@ class FFLogFeature(private val kord: Kord) : CoroutineScope, GuildChatInputComma
             kord.createGlobalChatInputCommand(
                 command, "프프로그 정보를 가져옵니다."
             ) {
-                string("이름", "가져올 유저의 이름.") {
+                string(ARGUMENT_NAME, "가져올 유저의 이름.") {
                     required = true
                 }
-                string("서버", "가져올 유저의 서버") {
+                string(ARGUMENT_SERVER, "가져올 유저의 서버") {
+                    required = true
+                }
+                boolean(ARGUMENT_EXPOSABLE, "조회한 로그의 공개여부") {
                     required = true
                 }
             }

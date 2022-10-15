@@ -16,6 +16,28 @@ data class FFlogRankingSummary(
     val fifthFloor: String?
 ) {
     companion object {
+        private val jobEmojiMapping = mapOf(
+            "Astrologian" to "<:Astrologian:938816154229690368>",
+            "Sage" to "<:Sage:1030750763758125066>",
+            "Scholar" to "<:Scholar:938816154540048465>",
+            "WhiteMage" to "<:WhiteMage:938816154292592691>",
+            "DarkKnight" to "<:DarkKnight:938816154695262258>",
+            "Paladin" to "<:Paladin:938816581490839572>",
+            "Gunbreaker" to "<:Gunbreaker:938816154338750474>",
+            "Warrior" to "<:Warrior:938816154351333407>",
+            "Bard" to "<:Bard:938816153864798249>",
+            "BlackMage" to "<:BlackMage:938816154510696488>",
+            "Dancer" to "<:Dancer:938816154233896980>",
+            "Dragoon" to "<:Dragoon:938816154317758474>",
+            "Machinist" to "<:Machinist:938816154640719872>",
+            "Monk" to "<:Monk:938816154456178730>",
+            "Ninja" to "<:Ninja:938816154728800256>",
+            "Reaper" to "<:Reaper:1030729479598907422>",
+            "RedMage" to "<:RedMage:946139417033187351>",
+            "Samurai" to "<:Samurai:938816154431000666>",
+            "Summoner" to "<:Summoner:938816154561032232>"
+        )
+
         fun fromRanking(fflogRanking: FFlogRanking, name: String, server: String): FFlogRankingSummary {
             val ranking = fflogRanking.data!!.characterData!!.character!!.zoneRankings!!
             val allstar = ranking.allStars?.first()
@@ -45,7 +67,7 @@ data class FFlogRankingSummary(
         return """
             이름: $name
             서버: $server
-            직업: $job
+            직업: ${jobEmojiMapping[job]}
             올스타 포인트: $allStarPoint
             올스타 백분위: $allStarPercent
             올스타 등수: $allStarRankings
