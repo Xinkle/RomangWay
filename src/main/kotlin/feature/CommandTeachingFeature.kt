@@ -15,6 +15,9 @@ import kotlinx.coroutines.launch
 import org.jetbrains.exposed.sql.transactions.transaction
 import kotlin.coroutines.CoroutineContext
 
+private const val ARGUMENT_COMMAND_NAME = "명령어"
+private const val ARGUMENT_COMMAND_DESCRIPTION = "설명"
+
 class CommandTeachingFeature(private val kord: Kord) : CoroutineScope, GuildChatInputCommandInteractionListener {
     override val coroutineContext: CoroutineContext
         get() = SupervisorJob()
@@ -32,9 +35,9 @@ class CommandTeachingFeature(private val kord: Kord) : CoroutineScope, GuildChat
 
             println("Writer -> ${interaction.user.memberData}")
 
-            val commandName = command.strings["이름"]!!.trimStart('!')
+            val commandName = command.strings[ARGUMENT_COMMAND_NAME]!!.trimStart('!')
             val modifiedName = "!$commandName"
-            val description = command.strings["설명"]!!
+            val description = command.strings[ARGUMENT_COMMAND_DESCRIPTION]!!
 
             transaction {
                 val newRecord = CommandTeaching.new {
@@ -63,12 +66,12 @@ class CommandTeachingFeature(private val kord: Kord) : CoroutineScope, GuildChat
         println("$command module registered!")
         launch {
             kord.createGlobalChatInputCommand(
-                command, "이름과 설명 등록"
+                command, "명령어과 설명 등록"
             ) {
-                string("이름", "명령어를 설정합니다 ex:)!낭만봇, 낭만봇") {
+                string(ARGUMENT_COMMAND_NAME, "명령어를 설정합니다 ex:)!로망웨이, 로망웨이") {
                     required = true
                 }
-                string("설명", "이 명령어를 호출했을때 낭만봇이 대답해줄 말을 설정합니다.") {
+                string(ARGUMENT_COMMAND_DESCRIPTION, "이 명령어를 호출했을때 낭만봇이 대답해줄 말을 설정합니다.") {
                     required = true
                 }
             }
