@@ -12,7 +12,7 @@ fun findCommand(commandName: String): CommandTeaching? = transaction {
 }
 
 fun findSimilarCommands(commandName: String): List<CommandTeaching> = transaction {
-    val likeContentQuery = "%${commandName.drop(1)}%"
+    val likeContentQuery = "%${commandName.trimStart('!')}%"
 
     CommandTeaching.find(CommandTeachingTable.name like likeContentQuery).toList()
 }
