@@ -12,6 +12,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.like
 import org.jetbrains.exposed.sql.transactions.transaction
 import kotlin.coroutines.CoroutineContext
 
@@ -77,10 +78,30 @@ class NameTeachingFeature(private val kord: Kord) : CoroutineScope, GuildChatInp
 
                 // check if our command is being invoked
                 if (message.content.startsWith("!")) {
-                    val nameTaught = transaction {
-                        NameTeaching.find(NameTeachingTable.name eq message.content).first()
+                    transaction {
+                        NameTeaching.find(NameTeachingTable.name eq message.content).firstOrNull()
+                    }?.also {
+                        message.channel.createMessage(it.description)
+                        return@on
                     }
-                    message.channel.createMessage(nameTaught.description)
+
+                    val likeContentQuery = "%${message.content.drop(1)}%"
+
+                    transaction {
+                        NameTeaching.find(NameTeachingTable.name like likeContentQuery).toList()
+                    }.also { similarNameList ->
+                        if (similarNameList.isNotEmpty()) {
+                            val responseMessage = StringBuilder()
+                                .appendLine("그런 명령어는 없어요 혹시 아래의 명령어를 찾으시나요?")
+                                .apply {
+                                    similarNameList.forEach {
+                                        appendLine(it.name)
+                                    }
+                                }.toString()
+
+                            message.channel.createMessage(responseMessage)
+                        }
+                    }
                 }
             }
         }
