@@ -32,6 +32,8 @@ dependencies {
     implementation("io.ktor:ktor-client-auth:$ktorVersion")
     implementation("io.ktor:ktor-client-cio:$ktorVersion")
     implementation("com.expediagroup:graphql-kotlin-ktor-client:6.2.5")
+    implementation("org.seleniumhq.selenium:selenium-java:4.5.0")
+    implementation("org.seleniumhq.selenium:selenium-chrome-driver:4.5.0")
 }
 
 graphql {

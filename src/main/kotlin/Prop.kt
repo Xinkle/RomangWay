@@ -5,11 +5,13 @@ object Prop {
     private const val KEY_DISCORD_BOT_TOKEN = "discord_bot_token"
     private const val KEY_FFLOG_CLIENT_ID = "fflog_client_id"
     private const val KEY_FFLOG_CLIENT_SECRET = "fflog_client_secret"
+    private const val KEY_CHROMEDRIVER = "chromedriver"
 
     val keyList = listOf(
         KEY_DISCORD_BOT_TOKEN,
         KEY_FFLOG_CLIENT_ID,
-        KEY_FFLOG_CLIENT_SECRET
+        KEY_FFLOG_CLIENT_SECRET,
+        KEY_CHROMEDRIVER
     )
 
     private val prop = Properties().apply {
@@ -25,4 +27,5 @@ object Prop {
     fun getDiscordBotToken(): String = prop.getProperty(KEY_DISCORD_BOT_TOKEN)
     fun getFFlogClientId(): String = prop.getProperty(KEY_FFLOG_CLIENT_ID)
     fun getFFLogClientSecret(): String = prop.getProperty(KEY_FFLOG_CLIENT_SECRET)
+    fun getChromeDriver(): String = prop.getProperty(KEY_CHROMEDRIVER)
 }

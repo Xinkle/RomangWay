@@ -7,12 +7,14 @@ import dev.kord.gateway.PrivilegedIntent
 import feature.CommandFindingFeature
 import feature.CommandTeachingFeature
 import feature.FFLogFeature
+import feature.ItemSearchFeature
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.withContext
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.transactions.transaction
 import java.util.*
+
 
 suspend fun main() = withContext(Dispatchers.IO) {
     Database.connect("jdbc:sqlite:database/romangway.db", "org.sqlite.JDBC")
@@ -27,12 +29,13 @@ suspend fun main() = withContext(Dispatchers.IO) {
     val fflogFeature = FFLogFeature(kord)
     val commandTeachingFeature = CommandTeachingFeature(kord)
     val commandFindingFeature = CommandFindingFeature(kord)
+    val itemSearchFeature = ItemSearchFeature(kord)
 
     kord.on<GuildChatInputCommandInteractionCreateEvent> {
         val command = interaction.command
 
         try {
-            listOf(fflogFeature, commandTeachingFeature, commandFindingFeature)
+            listOf(fflogFeature, commandTeachingFeature, commandFindingFeature, itemSearchFeature)
                 .first { it.command == command.data.name.value }
                 .onGuildChatInputCommand(interaction)
         } catch (e: Exception) {
