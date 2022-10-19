@@ -30,7 +30,12 @@ class ItemSearchFeature(private val kord: Kord) : CoroutineScope, GuildChatInput
     }
 
     private val driver: WebDriver = ChromeDriver(
-        ChromeOptions().addArguments("--headless", "--no-sandbox", "--disable-dev-shm-usage")
+        ChromeOptions().addArguments(
+            "--headless",
+            "--no-sandbox",
+            "--disable-dev-shm-usage",
+            "--force-device-scale-factor=1.5"
+        )
     ).apply {
         manage().window().size = Dimension(835, 1080)
     }
@@ -50,10 +55,9 @@ class ItemSearchFeature(private val kord: Kord) : CoroutineScope, GuildChatInput
             By.tagName("a")
         )
 
-        val itemPageLink = itemCandidates
-            .firstOrNull {
-                it.text.replace(" ", "") == itemName.replace(" ", "")
-            }?.getAttribute("href") ?: run {
+        val itemPageLink = itemCandidates.firstOrNull {
+            it.text.replace(" ", "") == itemName.replace(" ", "")
+        }?.getAttribute("href") ?: run {
             val itemCandidatesNames = itemCandidates.take(5).map { it.text }
 
             if (itemCandidatesNames.isEmpty()) {

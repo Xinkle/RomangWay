@@ -9,7 +9,6 @@ import feature.CommandTeachingFeature
 import feature.FFLogFeature
 import feature.ItemSearchFeature
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.withContext
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.transactions.transaction
@@ -22,9 +21,9 @@ suspend fun main() = withContext(Dispatchers.IO) {
     val kord = Kord(Prop.getDiscordBotToken())
 
     // delete all commands
-    kord.getGlobalApplicationCommands().toList().forEach {
-        kord.rest.interaction.deleteGlobalApplicationCommand(it.applicationId, it.id)
-    }
+//    kord.getGlobalApplicationCommands().toList().forEach {
+//        kord.rest.interaction.deleteGlobalApplicationCommand(it.applicationId, it.id)
+//    }
 
     val fflogFeature = FFLogFeature(kord)
     val commandTeachingFeature = CommandTeachingFeature(kord)
