@@ -30,7 +30,7 @@ class ItemSearchFeature(private val kord: Kord) : CoroutineScope, GuildChatInput
     }
 
     private val driver: WebDriver = ChromeDriver(
-        ChromeOptions().addArguments("--headless")
+        ChromeOptions().addArguments("--headless", "--no-sandbox", "--disable-dev-shm-usage")
     ).apply {
         manage().window().size = Dimension(835, 1080)
     }
