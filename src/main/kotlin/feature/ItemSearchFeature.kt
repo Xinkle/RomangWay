@@ -89,6 +89,7 @@ class ItemSearchFeature(private val kord: Kord) : CoroutineScope, GuildChatInput
     }
 
     init {
+        println("$command module registered!")
         launch {
             kord.createGlobalChatInputCommand(
                 command, "타로트맛 타로트에서 아이템을 검색합니다"

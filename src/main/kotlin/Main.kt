@@ -4,10 +4,7 @@ import dev.kord.core.event.interaction.GuildChatInputCommandInteractionCreateEve
 import dev.kord.core.on
 import dev.kord.gateway.Intent
 import dev.kord.gateway.PrivilegedIntent
-import feature.CommandFindingFeature
-import feature.CommandTeachingFeature
-import feature.FFLogFeature
-import feature.ItemSearchFeature
+import feature.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.jetbrains.exposed.sql.*
@@ -29,12 +26,19 @@ suspend fun main() = withContext(Dispatchers.IO) {
     val commandTeachingFeature = CommandTeachingFeature(kord)
     val commandFindingFeature = CommandFindingFeature(kord)
     val itemSearchFeature = ItemSearchFeature(kord)
+    val directHitCalculatorFeature = DirectHitCalculatorFeature(kord)
 
     kord.on<GuildChatInputCommandInteractionCreateEvent> {
         val command = interaction.command
 
         try {
-            listOf(fflogFeature, commandTeachingFeature, commandFindingFeature, itemSearchFeature)
+            listOf(
+                fflogFeature,
+                commandTeachingFeature,
+                commandFindingFeature,
+                itemSearchFeature,
+                directHitCalculatorFeature
+            )
                 .first { it.command == command.data.name.value }
                 .onGuildChatInputCommand(interaction)
         } catch (e: Exception) {
