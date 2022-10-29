@@ -13,7 +13,10 @@ import java.util.*
 
 
 suspend fun main() = withContext(Dispatchers.IO) {
-    Database.connect("jdbc:sqlite:database/romangway.db", "org.sqlite.JDBC")
+    Database.connect(
+        "jdbc:mysql://${Prop.getDatabase()}", driver = "com.mysql.cj.jdbc.Driver",
+        user = Prop.getDatabaseId(), password = Prop.getDatabasePw()
+    )
 
     val kord = Kord(Prop.getDiscordBotToken())
 

@@ -14,7 +14,7 @@ plugins {
 }
 
 group = "creat.xinkle"
-version = "1.04"
+version = "1.06"
 
 repositories {
     mavenCentral()
@@ -34,6 +34,7 @@ dependencies {
     implementation("com.expediagroup:graphql-kotlin-ktor-client:6.2.5")
     implementation("org.seleniumhq.selenium:selenium-java:4.5.0")
     implementation("org.seleniumhq.selenium:selenium-chrome-driver:4.5.0")
+    implementation("mysql:mysql-connector-java:8.0.30")
 }
 
 graphql {
