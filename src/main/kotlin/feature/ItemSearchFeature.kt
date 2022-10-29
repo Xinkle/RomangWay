@@ -13,8 +13,9 @@ import org.openqa.selenium.By
 import org.openqa.selenium.Dimension
 import org.openqa.selenium.OutputType
 import org.openqa.selenium.WebDriver
-import org.openqa.selenium.chrome.ChromeDriver
 import org.openqa.selenium.chrome.ChromeOptions
+import org.openqa.selenium.remote.RemoteWebDriver
+import java.net.URL
 import kotlin.coroutines.CoroutineContext
 
 private const val ARGUMENT_ITEM_NAME = "아이템_이름"
@@ -25,27 +26,24 @@ class ItemSearchFeature(private val kord: Kord) : CoroutineScope, GuildChatInput
 
     override val command: String = "아이템검색"
 
-    init {
-        System.setProperty("webdriver.chrome.driver", Prop.getChromeDriver())
-    }
-
-    private val driver: WebDriver = ChromeDriver(
-        ChromeOptions().addArguments(
-            "--headless",
-            "--no-sandbox",
-            "--disable-dev-shm-usage",
-            "--force-device-scale-factor=1.5"
-        )
-    ).apply {
-        manage().window().size = Dimension(835, 1080)
-    }
-
     override suspend fun onGuildChatInputCommand(interaction: GuildChatInputCommandInteraction) {
         val command = interaction.command
         val response = interaction.deferPublicResponse()
 
         val itemName = command.strings[ARGUMENT_ITEM_NAME]!!
         val url = "https://ff14.tar.to/item/list?keyword=$itemName"
+
+        val driver: WebDriver = RemoteWebDriver(
+            URL(Prop.getChromeDriver()),
+            ChromeOptions().addArguments(
+                "--headless",
+                "--no-sandbox",
+                "--disable-dev-shm-usage",
+                "--force-device-scale-factor=1.5"
+            )
+        ).apply {
+            manage().window().size = Dimension(835, 1080)
+        }
 
         driver.get(url)
 
@@ -86,6 +84,8 @@ class ItemSearchFeature(private val kord: Kord) : CoroutineScope, GuildChatInput
         response.respond {
             files = mutableListOf(file)
         }
+
+        driver.quit()
     }
 
     init {
