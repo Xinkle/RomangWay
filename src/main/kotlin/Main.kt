@@ -5,6 +5,7 @@ import dev.kord.core.on
 import dev.kord.gateway.Intent
 import dev.kord.gateway.PrivilegedIntent
 import feature.*
+import fflog.FFLogClient
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.jetbrains.exposed.sql.*
@@ -25,7 +26,11 @@ suspend fun main() = withContext(Dispatchers.IO) {
 //        kord.rest.interaction.deleteGlobalApplicationCommand(it.applicationId, it.id)
 //    }
 
-    val fflogFeature = FFLogFeature(kord)
+    val fflogClient = FFLogClient()
+    fflogClient.refreshToken()
+
+    val fflogFeature = FFLogFeature(kord, fflogClient)
+    val ffLogDeathAnalyzeFeature = FFLogDeathAnalyzeFeature(kord, fflogClient)
     val commandTeachingFeature = CommandTeachingFeature(kord)
     val commandFindingFeature = CommandFindingFeature(kord)
     val itemSearchFeature = ItemSearchFeature(kord)
@@ -40,9 +45,9 @@ suspend fun main() = withContext(Dispatchers.IO) {
                 commandTeachingFeature,
                 commandFindingFeature,
                 itemSearchFeature,
-                directHitCalculatorFeature
-            )
-                .first { it.command == command.data.name.value }
+                directHitCalculatorFeature,
+                ffLogDeathAnalyzeFeature
+            ).first { it.command == command.data.name.value }
                 .onGuildChatInputCommand(interaction)
         } catch (e: Exception) {
             e.printStackTrace()
