@@ -10,7 +10,7 @@ data class FFLogDeathSummary(
     val killingAbilityName: String
 ) {
     companion object {
-        fun fromFFLogDeath(fflogDeath: FFlogDeath, startTime: Long): List<FFLogDeathSummary> =
+        fun fromFFLogDeath(fflogDeath: FFLogDeath, startTime: Long): List<FFLogDeathSummary> =
             ArrayList<FFLogDeathSummary>().apply {
                 fflogDeath.data.reportData.report.events.data.forEachIndexed { idx, data ->
                     add(

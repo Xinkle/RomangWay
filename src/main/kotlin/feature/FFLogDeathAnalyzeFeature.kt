@@ -6,9 +6,9 @@ import dev.kord.core.Kord
 import dev.kord.core.behavior.interaction.response.respond
 import dev.kord.core.entity.interaction.GuildChatInputCommandInteraction
 import dev.kord.rest.builder.interaction.string
+import feature.model.FFLogDeath
 import feature.model.FFLogDeathSummary
 import feature.model.FFLogFight
-import feature.model.FFlogDeath
 import fflog.FFLogClient
 import io.ktor.http.*
 import kotlinx.coroutines.CoroutineScope
@@ -50,7 +50,7 @@ class FFLogDeathAnalyzeFeature(
 
         println("FFlog death report analyzing -> $url")
 
-        val response = interaction.deferEphemeralResponse()
+        val response = interaction.deferPublicResponse()
 
         try {
             val reportCode: String = Url(url).pathSegments.last()
@@ -64,7 +64,7 @@ class FFLogDeathAnalyzeFeature(
             val deathQueryResult = getFFLogDeathReport(reportCode, fightId)
 
 
-            val fflogDeath: FFlogDeath = Json.decodeFromString(deathQueryResult)
+            val fflogDeath: FFLogDeath = Json.decodeFromString(deathQueryResult)
             val ffLogDeathSummaryList = FFLogDeathSummary.fromFFLogDeath(fflogDeath, fightStartTime.toLong())
 
             val resultString = StringBuilder().apply {

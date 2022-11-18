@@ -5,7 +5,7 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 @Serializable
-data class FFlogDeath(
+data class FFLogDeath(
     @SerialName("data")
     val `data`: Data
 ) {
@@ -27,7 +27,7 @@ data class FFlogDeath(
                 @Serializable
                 data class Events(
                     @SerialName("data")
-                    val `data`: List<Data>
+                    val `data`: List<Data>,
                 ) {
                     @Serializable
                     data class Data(
@@ -38,13 +38,13 @@ data class FFlogDeath(
                         @SerialName("killerID")
                         val killerID: Int,
                         @SerialName("killerInstance")
-                        val killerInstance: Int,
+                        val killerInstance: Int? = null,
                         @SerialName("killingAbility")
                         val killingAbility: KillingAbility,
                         @SerialName("source")
                         val source: Source,
                         @SerialName("sourceInstance")
-                        val sourceInstance: Int,
+                        val sourceInstance: Int? = null,
                         @SerialName("target")
                         val target: Target,
                         @SerialName("timestamp")
