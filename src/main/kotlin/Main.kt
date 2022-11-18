@@ -59,9 +59,12 @@ suspend fun main() = withContext(Dispatchers.IO) {
         SchemaUtils.create(CommandTeachingTable)
     }
 
+    println("Login...")
     kord.login {
         // we need to specify this to receive the content of messages
         @OptIn(PrivilegedIntent::class)
         intents += Intent.MessageContent
     }
+
+    println("Initialized")
 }
