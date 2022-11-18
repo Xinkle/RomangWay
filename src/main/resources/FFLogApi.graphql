@@ -1,0 +1,79 @@
+type Query {
+    characterData: CharacterData,
+    reportData: ReportData
+}
+
+type CharacterData {
+    character(name: String,  serverRegion: String, serverSlug: String): Character
+}
+
+type Character {
+    zoneRankings: String
+}
+
+type ReportData {
+    report(code: String): Report
+}
+
+type Report {
+    events(
+        fightIDs: [Int],
+        dataType: EventDataType,
+        startTime: Float,
+        endTime: Float,
+        translate: Boolean,
+        includeResources: Boolean,
+        useAbilityIDs: Boolean,
+        useActorIDs: Boolean
+    ): ReportEventPaginator
+
+    fights(
+        fightIDs: [Int]
+    ): ReportFight
+}
+
+type ReportFight {
+    endTime: Float!
+    fightPercentage: Float
+    id: Int!
+    kill: Boolean
+    name: String!
+    startTime: Float!
+}
+
+type ReportEventPaginator {
+    data: String
+    nextPageTimestamp: Float
+}
+
+
+enum EventDataType {
+    # All Events
+    All
+    # Buffs.
+    Buffs
+    # Casts.
+    Casts
+    # Combatant info events (includes gear).
+    CombatantInfo
+    # Damage done.
+    DamageDone
+    # Damage taken.
+    DamageTaken
+    # Deaths.
+    Deaths
+    # Debuffs.
+    Debuffs
+    # Dispels.
+    Dispels
+    # Healing done.
+    Healing
+    # Interrupts.
+    Interrupts
+    # Resources.
+    Resources
+    # Summons
+    Summons
+    # Threat.
+    Threat
+}

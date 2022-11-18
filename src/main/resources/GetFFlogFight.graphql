@@ -1,0 +1,13 @@
+query GetFFlogFight($code: String, $fight: Int) {
+    reportData {
+        report(code: $code) {
+            fights(fightIDs:[$fight]){
+                id
+                name
+                kill
+                startTime
+                endTime
+            }
+        }
+    }
+}
