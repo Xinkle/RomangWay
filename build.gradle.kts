@@ -14,7 +14,7 @@ plugins {
 }
 
 group = "creat.xinkle"
-version = "1.06"
+version = "1.07"
 
 repositories {
     mavenCentral()
