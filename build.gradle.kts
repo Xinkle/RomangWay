@@ -27,14 +27,15 @@ dependencies {
     implementation("org.jetbrains.exposed:exposed-core:$exposedVersion")
     implementation("org.jetbrains.exposed:exposed-dao:$exposedVersion")
     implementation("org.jetbrains.exposed:exposed-jdbc:$exposedVersion")
-    implementation("org.xerial:sqlite-jdbc:3.30.1")
+    implementation("org.xerial:sqlite-jdbc:3.39.3.0")
     implementation("io.ktor:ktor-client-core:$ktorVersion")
     implementation("io.ktor:ktor-client-auth:$ktorVersion")
     implementation("io.ktor:ktor-client-cio:$ktorVersion")
-    implementation("com.expediagroup:graphql-kotlin-ktor-client:6.2.5")
-    implementation("org.seleniumhq.selenium:selenium-java:4.5.0")
-    implementation("org.seleniumhq.selenium:selenium-chrome-driver:4.5.0")
+    implementation("com.expediagroup:graphql-kotlin-ktor-client:6.3.0")
+    implementation("org.seleniumhq.selenium:selenium-java:4.6.0")
+    implementation("org.seleniumhq.selenium:selenium-chrome-driver:4.6.0")
     implementation("mysql:mysql-connector-java:8.0.30")
+    implementation("org.slf4j:slf4j-simple:2.0.3")
 }
 
 graphql {

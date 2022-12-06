@@ -1,9 +1,10 @@
-query GetFFlogDeath($code: String, $fight: Int){
+query GetFFLogDeathDetail($code: String, $fight: Int, $death: Int) {
     reportData {
         report(code: $code) {
             events(
                 fightIDs:[$fight],
                 dataType:Deaths,
+                death:$death,
                 startTime:0,
                 endTime:9999999,
                 translate:false,
