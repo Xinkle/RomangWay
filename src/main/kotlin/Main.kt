@@ -65,6 +65,4 @@ suspend fun main() = withContext(Dispatchers.IO) {
         @OptIn(PrivilegedIntent::class)
         intents += Intent.MessageContent
     }
-
-    println("Initialized")
 }

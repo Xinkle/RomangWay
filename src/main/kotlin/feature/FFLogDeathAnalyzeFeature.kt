@@ -2,19 +2,15 @@ package feature
 
 import creat.xinkle.Romangway.GetFFlogDeath
 import creat.xinkle.Romangway.GetFFlogFight
-import dev.kord.common.entity.ButtonStyle
 import dev.kord.core.Kord
 import dev.kord.core.behavior.interaction.response.respond
-import dev.kord.core.cache.data.ComponentData
-import dev.kord.core.entity.component.Component
 import dev.kord.core.entity.interaction.GuildChatInputCommandInteraction
+import dev.kord.core.event.interaction.GuildSelectMenuInteractionCreateEvent
+import dev.kord.core.on
 import dev.kord.rest.builder.component.ActionRowBuilder
-import dev.kord.rest.builder.component.ButtonBuilder
-import dev.kord.rest.builder.component.MessageComponentBuilder
-import dev.kord.rest.builder.component.SelectOptionBuilder
 import dev.kord.rest.builder.interaction.string
-import dev.kord.rest.builder.message.create.FollowupMessageCreateBuilder
 import feature.model.FFLogDeath
+import feature.model.FFLogDeathIdSelected
 import feature.model.FFLogDeathSummary
 import feature.model.FFLogFight
 import fflog.FFLogClient
@@ -23,10 +19,12 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import kotlinx.serialization.decodeFromString
+import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlin.coroutines.CoroutineContext
 
 private const val ARGUMENT_LOG_URL = "로그주소"
+private const val KEY_DETAIL_ANALYZED = "DEATH_ID"
 
 class FFLogDeathAnalyzeFeature(
     private val kord: Kord,
@@ -47,6 +45,18 @@ class FFLogDeathAnalyzeFeature(
                     required = true
                 }
             }
+
+            kord.on<GuildSelectMenuInteractionCreateEvent> {
+                val interaction = this.interaction
+                val response = interaction.deferPublicResponse()
+
+                val ffLogDeathIdSelected =
+                    Json.decodeFromString<FFLogDeathIdSelected>(interaction.data.data.values.value?.first()!!)
+
+                response.respond {
+                    content = "${interaction.componentId} -> $ffLogDeathIdSelected"
+                }
+            }
         }
     }
 
@@ -58,11 +68,12 @@ class FFLogDeathAnalyzeFeature(
 
         println("FFlog death report analyzing -> $url")
 
-        val response = interaction.deferPublicResponse()
+        val response = interaction.deferEphemeralResponse()
 
         try {
-            val reportCode: String = Url(url).pathSegments.last()
-            val fightId: Int? = "fight=(.)".toRegex().find(Url(url).fragment)?.groupValues?.get(1)?.toInt()
+            val reportCode: String = Url(url).pathSegments.last { it.isNotEmpty() }
+            val fightId: Int? = "fight=(.+)&".toRegex().find(Url(url).fragment)?.groupValues?.get(1)?.toInt()
+                ?: "fight=(.+)".toRegex().find(Url(url).fragment)?.groupValues?.get(1)?.toInt()
 
             requireNotNull(fightId) { "Can't find fightId!" }
 
@@ -77,13 +88,32 @@ class FFLogDeathAnalyzeFeature(
 
             val resultString = StringBuilder().apply {
                 appendLine("$url 의 분석 결과 입니다.")
-                ffLogDeathSummaryList.forEach {
-                    appendLine(it.toString())
-                }
             }.toString()
 
             response.respond {
                 content = resultString
+                components =
+                    mutableListOf(
+                        ActionRowBuilder().apply {
+                            this.selectMenu(
+                                "death_id"
+                            ) {
+                                placeholder = "세부 분석을 원하는 항목을 선택하세요."
+                                ffLogDeathSummaryList.forEach {
+                                    option(
+                                        "$it",
+                                        Json.encodeToString(FFLogDeathIdSelected(it.deathNum, reportCode, fightId))
+                                    )
+                                }
+                            }
+//                            this.interactionButton(
+//                                ButtonStyle.Primary,
+//                                "test",
+//                            ) {
+//                                label = "TEST"
+//                            }
+                        }
+                    )
             }
         } catch (e: Exception) {
             e.printStackTrace()
