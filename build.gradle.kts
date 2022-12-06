@@ -36,6 +36,7 @@ dependencies {
     implementation("org.seleniumhq.selenium:selenium-chrome-driver:4.6.0")
     implementation("mysql:mysql-connector-java:8.0.30")
     implementation("org.slf4j:slf4j-simple:2.0.3")
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.4.1")
 }
 
 graphql {

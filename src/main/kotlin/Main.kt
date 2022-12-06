@@ -35,6 +35,7 @@ suspend fun main() = withContext(Dispatchers.IO) {
     val commandFindingFeature = CommandFindingFeature(kord)
     val itemSearchFeature = ItemSearchFeature(kord)
     val directHitCalculatorFeature = DirectHitCalculatorFeature(kord)
+    val openAiChatFeature = OpenAiChatFeature(kord)
 
     kord.on<GuildChatInputCommandInteractionCreateEvent> {
         val command = interaction.command
