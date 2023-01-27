@@ -45,9 +45,13 @@ class CommandFindingFeature(private val kord: Kord) : CoroutineScope, GuildChatI
                 val responseMessage = StringBuilder()
                     .appendLine("아래의 명령어를 찾았어요!")
                     .apply {
-                        similarNameList.forEach {
-                            appendLine(it.name)
-                        }
+                        similarNameList
+                            .distinctBy {
+                                it.name
+                            }
+                            .forEach {
+                                appendLine(it.name)
+                            }
                     }.toString()
 
                 response.respond { content = responseMessage }
