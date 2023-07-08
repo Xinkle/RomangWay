@@ -6,7 +6,7 @@ val exposedVersion: String by project
 val ktorVersion: String by project
 
 plugins {
-    kotlin("jvm") version "1.7.10"
+    kotlin("jvm") version "1.9.0"
     application
     id("org.jetbrains.kotlin.plugin.serialization") version "1.7.10"
     id("com.expediagroup.graphql") version "6.2.5"
@@ -22,19 +22,19 @@ repositories {
 }
 
 dependencies {
-    implementation("dev.kord:kord-core:0.8.0-M16")
+    implementation("dev.kord:kord-core:0.9.0")
     testImplementation(kotlin("test"))
     implementation("org.jetbrains.exposed:exposed-core:$exposedVersion")
     implementation("org.jetbrains.exposed:exposed-dao:$exposedVersion")
     implementation("org.jetbrains.exposed:exposed-jdbc:$exposedVersion")
-    implementation("org.xerial:sqlite-jdbc:3.39.3.0")
+    implementation("org.xerial:sqlite-jdbc:3.42.0.0")
     implementation("io.ktor:ktor-client-core:$ktorVersion")
     implementation("io.ktor:ktor-client-auth:$ktorVersion")
     implementation("io.ktor:ktor-client-cio:$ktorVersion")
     implementation("com.expediagroup:graphql-kotlin-ktor-client:6.3.0")
-    implementation("org.seleniumhq.selenium:selenium-java:4.6.0")
+    implementation("org.seleniumhq.selenium:selenium-java:4.10.0")
     implementation("org.seleniumhq.selenium:selenium-chrome-driver:4.6.0")
-    implementation("mysql:mysql-connector-java:8.0.30")
+    implementation("mysql:mysql-connector-java:8.0.33")
     implementation("org.slf4j:slf4j-simple:2.0.3")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.4.1")
 }
@@ -55,7 +55,7 @@ tasks.test {
 }
 
 tasks.withType<KotlinCompile> {
-    kotlinOptions.jvmTarget = "1.8"
+    kotlinOptions.jvmTarget = "17"
 }
 
 application {
