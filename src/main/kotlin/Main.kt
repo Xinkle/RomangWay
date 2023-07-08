@@ -5,12 +5,15 @@ import dev.kord.core.on
 import dev.kord.gateway.Intent
 import dev.kord.gateway.PrivilegedIntent
 import feature.*
+import feature.topsimulator.TopSimulatorFeature
 import fflog.FFLogClient
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import org.jetbrains.exposed.sql.*
+import org.jetbrains.exposed.sql.Database
+import org.jetbrains.exposed.sql.SchemaUtils
+import org.jetbrains.exposed.sql.StdOutSqlLogger
+import org.jetbrains.exposed.sql.addLogger
 import org.jetbrains.exposed.sql.transactions.transaction
-import java.util.*
 
 
 suspend fun main() = withContext(Dispatchers.IO) {
@@ -36,6 +39,7 @@ suspend fun main() = withContext(Dispatchers.IO) {
     val itemSearchFeature = ItemSearchFeature(kord)
     val directHitCalculatorFeature = DirectHitCalculatorFeature(kord)
     val openAiChatFeature = OpenAiChatFeature(kord)
+    val topSimulatorFeature = TopSimulatorFeature(kord)
 
     kord.on<GuildChatInputCommandInteractionCreateEvent> {
         val command = interaction.command
@@ -47,7 +51,8 @@ suspend fun main() = withContext(Dispatchers.IO) {
                 commandFindingFeature,
                 itemSearchFeature,
                 directHitCalculatorFeature,
-                ffLogDeathAnalyzeFeature
+                ffLogDeathAnalyzeFeature,
+                topSimulatorFeature
             ).first { it.command == command.data.name.value }
                 .onGuildChatInputCommand(interaction)
         } catch (e: Exception) {

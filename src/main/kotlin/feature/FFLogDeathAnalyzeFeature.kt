@@ -48,14 +48,15 @@ class FFLogDeathAnalyzeFeature(
             }
 
             kord.on<GuildSelectMenuInteractionCreateEvent> {
-                val interaction = this.interaction
-                val response = interaction.deferPublicResponse()
+                if (interaction.componentId == KEY_DETAIL_ANALYZED) {
+                    val response = interaction.deferPublicResponse()
 
-                val ffLogDeathIdSelected =
-                    Json.decodeFromString<FFLogDeathIdSelected>(interaction.data.data.values.value?.first()!!)
+                    val ffLogDeathIdSelected =
+                        Json.decodeFromString<FFLogDeathIdSelected>(interaction.data.data.values.value?.first()!!)
 
-                response.respond {
-                    content = "${interaction.componentId} -> $ffLogDeathIdSelected"
+                    response.respond {
+                        content = "${interaction.componentId} -> $ffLogDeathIdSelected"
+                    }
                 }
             }
         }
@@ -97,7 +98,7 @@ class FFLogDeathAnalyzeFeature(
                     mutableListOf(
                         ActionRowBuilder().apply {
                             this.stringSelect(
-                                "death_id"
+                                KEY_DETAIL_ANALYZED
                             ) {
                                 placeholder = "세부 분석을 원하는 항목을 선택하세요."
                                 ffLogDeathSummaryList.forEach {
