@@ -6,6 +6,8 @@ import dev.kord.core.behavior.interaction.response.respond
 import dev.kord.core.entity.interaction.GuildChatInputCommandInteraction
 import dev.kord.rest.NamedFile
 import dev.kord.rest.builder.interaction.string
+import io.ktor.client.request.forms.*
+import io.ktor.utils.io.jvm.javaio.*
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
@@ -79,7 +81,7 @@ class ItemSearchFeature(private val kord: Kord) : CoroutineScope, GuildChatInput
             OutputType.FILE
         )
 
-        val file = NamedFile("$itemName.jpg", srcFile.inputStream())
+        val file = NamedFile("$itemName.jpg", ChannelProvider { srcFile.inputStream().toByteReadChannel() })
 
         response.respond {
             files = mutableListOf(file)

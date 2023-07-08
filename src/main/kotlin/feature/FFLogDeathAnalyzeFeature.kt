@@ -8,6 +8,7 @@ import dev.kord.core.entity.interaction.GuildChatInputCommandInteraction
 import dev.kord.core.event.interaction.GuildSelectMenuInteractionCreateEvent
 import dev.kord.core.on
 import dev.kord.rest.builder.component.ActionRowBuilder
+import dev.kord.rest.builder.component.option
 import dev.kord.rest.builder.interaction.string
 import feature.model.FFLogDeath
 import feature.model.FFLogDeathIdSelected
@@ -95,7 +96,7 @@ class FFLogDeathAnalyzeFeature(
                 components =
                     mutableListOf(
                         ActionRowBuilder().apply {
-                            this.selectMenu(
+                            this.stringSelect(
                                 "death_id"
                             ) {
                                 placeholder = "세부 분석을 원하는 항목을 선택하세요."

@@ -1,14 +1,11 @@
 package feature
 
-import dev.kord.common.entity.ButtonStyle
 import dev.kord.common.entity.TextInputStyle
 import dev.kord.core.Kord
 import dev.kord.core.behavior.interaction.response.respond
 import dev.kord.core.entity.interaction.GuildChatInputCommandInteraction
 import dev.kord.rest.builder.component.ActionRowBuilder
-import dev.kord.rest.builder.component.ButtonBuilder
-import dev.kord.rest.builder.component.TextInputBuilder
-import dev.kord.rest.builder.interaction.int
+import dev.kord.rest.builder.interaction.integer
 import dev.kord.rest.builder.message.modify.InteractionResponseModifyBuilder
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
@@ -30,7 +27,8 @@ class DirectHitCalculatorFeature(private val kord: Kord) : CoroutineScope, Guild
             kord.createGlobalChatInputCommand(
                 command, "직격 관련 수치를 계산합니다."
             ) {
-                int(ARGUMENT_DIRECT_HIT, "직격 수치") {
+                integer(ARGUMENT_DIRECT_HIT, "직격 수치") {
+
                     required = true
                 }
             }
