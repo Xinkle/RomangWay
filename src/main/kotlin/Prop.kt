@@ -9,13 +9,15 @@ object Prop {
     private const val KEY_DATABASE = "database"
     private const val KEY_DATABASE_ID = "db_id"
     private const val KEY_DATABASE_PW = "db_pw"
+    private const val KEY_OPENAI = "open_ai_key"
 
-    val keyList = listOf(
+    private val keyList = listOf(
         KEY_DISCORD_BOT_TOKEN,
         KEY_FFLOG_CLIENT_ID,
         KEY_FFLOG_CLIENT_SECRET,
         KEY_CHROMEDRIVER,
-        KEY_DATABASE
+        KEY_DATABASE,
+        KEY_OPENAI
     )
 
     private val prop = Properties().apply {
@@ -35,4 +37,5 @@ object Prop {
     fun getDatabase(): String = prop.getProperty(KEY_DATABASE)
     fun getDatabaseId(): String = prop.getProperty(KEY_DATABASE_ID)
     fun getDatabasePw(): String = prop.getProperty(KEY_DATABASE_PW)
+    fun getOpenAIKey(): String = prop.getProperty(KEY_OPENAI)
 }
