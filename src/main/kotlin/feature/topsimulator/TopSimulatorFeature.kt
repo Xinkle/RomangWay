@@ -173,8 +173,8 @@ class TopSimulatorFeature(private val kord: Kord) : CoroutineScope, GuildChatInp
 
                     interaction.updateEphemeralMessage {
                         content = responseContent
-                        components.clear()
-                        components.addAll(p2QuestionButtons)
+                        components?.clear()
+                        components?.addAll(p2QuestionButtons)
                     }
                 } else if (p5AnswerList.contains(interaction.component.customId)) {
                     val p5 = p5PhaseList.pick(userName)
@@ -191,8 +191,8 @@ class TopSimulatorFeature(private val kord: Kord) : CoroutineScope, GuildChatInp
 
                     interaction.updateEphemeralMessage {
                         content = responseContent
-                        components.clear()
-                        components.addAll(p5QuestionButtons)
+                        components?.clear()
+                        components?.addAll(p5QuestionButtons)
                     }
                 }
             }
@@ -207,8 +207,8 @@ class TopSimulatorFeature(private val kord: Kord) : CoroutineScope, GuildChatInp
 
                         interaction.updateEphemeralMessage {
                             content = p2.makeQuestion()
-                            components.clear()
-                            components.addAll(p2QuestionButtons)
+                            components?.clear()
+                            components?.addAll(p2QuestionButtons)
                         }
                     }
                 }

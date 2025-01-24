@@ -84,7 +84,7 @@ class ItemSearchFeature(private val kord: Kord) : CoroutineScope, GuildChatInput
         val file = NamedFile("$itemName.jpg", ChannelProvider { srcFile.inputStream().toByteReadChannel() })
 
         response.respond {
-            files = mutableListOf(file)
+            files.add(file)
         }
 
         driver.quit()
