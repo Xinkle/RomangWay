@@ -3,7 +3,7 @@ package feature
 import dev.kord.core.Kord
 import dev.kord.core.behavior.interaction.response.respond
 import dev.kord.core.entity.interaction.GuildChatInputCommandInteraction
-import dev.kord.rest.builder.interaction.int
+import dev.kord.rest.builder.interaction.integer
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
@@ -24,7 +24,8 @@ class DirectHitCalculatorFeature(private val kord: Kord) : CoroutineScope, Guild
             kord.createGlobalChatInputCommand(
                 command, "직격 관련 수치를 계산합니다."
             ) {
-                int(ARGUMENT_DIRECT_HIT, "직격 수치") {
+                integer(ARGUMENT_DIRECT_HIT, "직격 수치") {
+
                     required = true
                 }
             }
@@ -39,9 +40,13 @@ class DirectHitCalculatorFeature(private val kord: Kord) : CoroutineScope, Guild
         val calculatedDirectHit = ((550 * (directHit - 400) / 1900.0)).toInt() / 10.0
         val nextDirectHit = ceil((calculatedDirectHit + 0.1) * 1900 / 55) + 400
 
-        response.respond {
-            content =
-                "현재 직격확률은 $calculatedDirectHit%, 데미지 기대값은 ${calculatedDirectHit * 0.0025 + 1}배, 다음단계를 위한 직격수치는 $nextDirectHit 입니다!"
+        try {
+            response.respond {
+                content =
+                    "현재 직격확률은 $calculatedDirectHit%, 데미지 기대값은 ${calculatedDirectHit * 0.0025 + 1}배, 다음단계를 위한 직격수치는 $nextDirectHit 입니다!"
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
         }
     }
 }

@@ -36,15 +36,15 @@ data class FFLogDeath(
                         @SerialName("fight")
                         val fight: Int,
                         @SerialName("killerID")
-                        val killerID: Int,
+                        val killerID: Int = -1,
                         @SerialName("killerInstance")
-                        val killerInstance: Int? = null,
+                        val killerInstance: Int = -1,
                         @SerialName("killingAbility")
-                        val killingAbility: KillingAbility,
+                        val killingAbility: KillingAbility = KillingAbility(),
                         @SerialName("source")
-                        val source: Source,
+                        val source: Source = Source(),
                         @SerialName("sourceInstance")
-                        val sourceInstance: Int? = null,
+                        val sourceInstance: Int = -1,
                         @SerialName("target")
                         val target: Target,
                         @SerialName("timestamp")
@@ -55,39 +55,39 @@ data class FFLogDeath(
                         @Serializable
                         data class Ability(
                             @SerialName("abilityIcon")
-                            val abilityIcon: String,
+                            val abilityIcon: String = "",
                             @SerialName("guid")
-                            val guid: Int,
+                            val guid: Int = -1,
                             @SerialName("name")
-                            val name: String,
+                            val name: String = "UNKNOWN",
                             @SerialName("type")
-                            val type: Int
+                            val type: Int = -1
                         )
 
                         @Serializable
                         data class KillingAbility(
                             @SerialName("abilityIcon")
-                            val abilityIcon: String,
+                            val abilityIcon: String = "",
                             @SerialName("guid")
-                            val guid: Int,
+                            val guid: Int = -1,
                             @SerialName("name")
-                            val name: String,
+                            val name: String = "UNKNOWN",
                             @SerialName("type")
-                            val type: Int
+                            val type: Int = -1
                         )
 
                         @Serializable
                         data class Source(
                             @SerialName("guid")
-                            val guid: Int,
+                            val guid: Int = -1,
                             @SerialName("icon")
-                            val icon: String,
+                            val icon: String = "",
                             @SerialName("id")
-                            val id: Int,
+                            val id: Int = -1,
                             @SerialName("name")
-                            val name: String,
+                            val name: String = "UNKNOWN",
                             @SerialName("type")
-                            val type: String
+                            val type: String = "UNKNOWN"
                         )
 
                         @Serializable

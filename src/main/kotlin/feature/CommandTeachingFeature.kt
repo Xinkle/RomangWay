@@ -84,7 +84,7 @@ class CommandTeachingFeature(private val kord: Kord) : CoroutineScope, GuildChat
 
                 if (commandName.startsWith("!")) {
                     findCommand(commandName)?.also {
-                        message.channel.createMessage(it.description)
+                        message.channel.createMessage("${it.writer}님이 알려주셨어요! ${it.description}")
                         return@on
                     }
 
@@ -93,9 +93,13 @@ class CommandTeachingFeature(private val kord: Kord) : CoroutineScope, GuildChat
                             val responseMessage = StringBuilder()
                                 .appendLine("그런 명령어는 없어요 혹시 아래의 명령어를 찾으시나요?")
                                 .apply {
-                                    similarNameList.forEach {
-                                        appendLine(it.name)
-                                    }
+                                    similarNameList
+                                        .distinctBy {
+                                            it.name
+                                        }
+                                        .forEach {
+                                            appendLine(it.name)
+                                        }
                                 }.toString()
 
                             message.channel.createMessage(responseMessage)

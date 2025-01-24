@@ -19,6 +19,7 @@ type Report {
     events(
         fightIDs: [Int],
         dataType: EventDataType,
+        death: Int,
         startTime: Float,
         endTime: Float,
         translate: Boolean,
