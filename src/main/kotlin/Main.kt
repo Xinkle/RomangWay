@@ -18,8 +18,10 @@ import org.jetbrains.exposed.sql.transactions.transaction
 
 suspend fun main() = withContext(Dispatchers.IO) {
     Database.connect(
-        "jdbc:mysql://${Prop.getDatabase()}", driver = "com.mysql.cj.jdbc.Driver",
-        user = Prop.getDatabaseId(), password = Prop.getDatabasePw()
+        "jdbc:mariadb://${Prop.getDatabase()}",
+        driver = "org.mariadb.jdbc.Driver",
+        user = Prop.getDatabaseId(),
+        password = Prop.getDatabasePw()
     )
 
     val kord = Kord(Prop.getDiscordBotToken())
