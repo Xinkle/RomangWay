@@ -9,7 +9,6 @@ import dev.kord.core.event.interaction.GuildSelectMenuInteractionCreateEvent
 import dev.kord.core.on
 import dev.kord.rest.builder.component.ActionRowBuilder
 import dev.kord.rest.builder.component.option
-import dev.kord.rest.builder.interaction.string
 import feature.model.FFLogDeath
 import feature.model.FFLogDeathIdSelected
 import feature.model.FFLogDeathSummary
@@ -19,7 +18,6 @@ import io.ktor.http.*
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
-import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlin.coroutines.CoroutineContext
@@ -35,18 +33,17 @@ class FFLogDeathAnalyzeFeature(
         get() = SupervisorJob()
     override val command: String = "데스로그"
 
+    override val arguments: List<CommandArgument> = listOf(
+        CommandArgument(
+            ARGUMENT_LOG_URL,
+            "분석할 로그의 주소.",
+            true,
+            ArgumentType.STRING
+        )
+    )
+
     init {
-        println("$command module registered!")
-
         launch {
-            kord.createGlobalChatInputCommand(
-                command, "프프로그에서 사망로그를 분석합니다.."
-            ) {
-                string(ARGUMENT_LOG_URL, "분석할 로그의 주소.") {
-                    required = true
-                }
-            }
-
             kord.on<GuildSelectMenuInteractionCreateEvent> {
                 if (interaction.componentId == KEY_DETAIL_ANALYZED) {
                     val response = interaction.deferPublicResponse()

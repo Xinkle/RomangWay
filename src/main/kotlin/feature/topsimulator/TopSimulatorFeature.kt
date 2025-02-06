@@ -11,7 +11,8 @@ import dev.kord.core.on
 import dev.kord.rest.builder.component.ActionRowBuilder
 import dev.kord.rest.builder.component.MessageComponentBuilder
 import dev.kord.rest.builder.component.option
-import dev.kord.rest.builder.interaction.string
+import feature.ArgumentType
+import feature.CommandArgument
 import feature.GuildChatInputCommandInteractionListener
 import io.ktor.util.*
 import kotlinx.coroutines.CoroutineScope
@@ -55,6 +56,19 @@ class TopSimulatorFeature(private val kord: Kord) : CoroutineScope, GuildChatInp
     override val coroutineContext: CoroutineContext
         get() = SupervisorJob()
     override val command: String = "절메가"
+
+    override val arguments: List<CommandArgument> = listOf(
+        CommandArgument(
+            ARGUMENT_TOP_PHASE,
+            "연습할 페이즈 선택",
+            true,
+            ArgumentType.STRING,
+            listOf(
+                Pair("2페이즈 - 파티 시너지", "p2"),
+                Pair("5페이즈 - 오메가", "p5")
+            )
+        )
+    )
 
     companion object {
         val p2PhaseList = ArrayList<Phase2_PartySynergy>()
@@ -145,16 +159,6 @@ class TopSimulatorFeature(private val kord: Kord) : CoroutineScope, GuildChatInp
 
     init {
         launch {
-            kord.createGlobalChatInputCommand(
-                command, "절메가 시뮬레이션을 시작합니다"
-            ) {
-                string(ARGUMENT_TOP_PHASE, "연습할 페이즈 선택") {
-                    required = true
-                    choice("2페이즈 - 파티 시너지", "p2")
-                    choice("5페이즈 - 오메가", "p5")
-                }
-            }
-
             kord.on<GuildButtonInteractionCreateEvent> {
                 val userName = interaction.user.data.username
 

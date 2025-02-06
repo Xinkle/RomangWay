@@ -1,36 +1,28 @@
 package feature
 
-import dev.kord.core.Kord
 import dev.kord.core.behavior.interaction.response.respond
 import dev.kord.core.entity.interaction.GuildChatInputCommandInteraction
-import dev.kord.rest.builder.interaction.integer
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.launch
 import kotlin.coroutines.CoroutineContext
 import kotlin.math.ceil
 
 private const val ARGUMENT_DIRECT_HIT = "직격"
 
-class DirectHitCalculatorFeature(private val kord: Kord) : CoroutineScope, GuildChatInputCommandInteractionListener {
+class DirectHitCalculatorFeature : CoroutineScope, GuildChatInputCommandInteractionListener {
     override val coroutineContext: CoroutineContext
         get() = SupervisorJob()
 
     override val command: String = "직격계산"
 
-    init {
-        println("$command module registered!")
-        launch {
-            kord.createGlobalChatInputCommand(
-                command, "직격 관련 수치를 계산합니다."
-            ) {
-                integer(ARGUMENT_DIRECT_HIT, "직격 수치") {
-
-                    required = true
-                }
-            }
-        }
-    }
+    override val arguments: List<CommandArgument> = listOf(
+        CommandArgument(
+            ARGUMENT_DIRECT_HIT,
+            "직격 수치",
+            true,
+            ArgumentType.INTEGER
+        )
+    )
 
     override suspend fun onGuildChatInputCommand(interaction: GuildChatInputCommandInteraction) {
         val command = interaction.command

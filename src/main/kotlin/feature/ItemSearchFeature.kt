@@ -1,32 +1,44 @@
 package feature
 
 import Prop
-import dev.kord.core.Kord
+import database.ItemTableDao
 import dev.kord.core.behavior.interaction.response.respond
 import dev.kord.core.entity.interaction.GuildChatInputCommandInteraction
 import dev.kord.rest.NamedFile
-import dev.kord.rest.builder.interaction.string
 import io.ktor.client.request.forms.*
 import io.ktor.utils.io.jvm.javaio.*
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.launch
+import org.jetbrains.exposed.sql.transactions.transaction
 import org.openqa.selenium.By
 import org.openqa.selenium.Dimension
 import org.openqa.selenium.OutputType
 import org.openqa.selenium.WebDriver
 import org.openqa.selenium.chrome.ChromeOptions
 import org.openqa.selenium.remote.RemoteWebDriver
+import universalis.JsonItemFinder
+import universalis.UniversalisClient
+import universalis.UniversalisWorlds
+import universalis.toReadableString
 import java.net.URL
 import kotlin.coroutines.CoroutineContext
 
 private const val ARGUMENT_ITEM_NAME = "아이템_이름"
 
-class ItemSearchFeature(private val kord: Kord) : CoroutineScope, GuildChatInputCommandInteractionListener {
+class ItemSearchFeature : CoroutineScope, GuildChatInputCommandInteractionListener {
     override val coroutineContext: CoroutineContext
         get() = SupervisorJob()
 
     override val command: String = "아이템검색"
+
+    override val arguments: List<CommandArgument> = listOf(
+        CommandArgument(
+            ARGUMENT_ITEM_NAME,
+            "아이템 이름",
+            true,
+            ArgumentType.STRING
+        )
+    )
 
     override suspend fun onGuildChatInputCommand(interaction: GuildChatInputCommandInteraction) {
         val command = interaction.command
@@ -81,25 +93,30 @@ class ItemSearchFeature(private val kord: Kord) : CoroutineScope, GuildChatInput
             OutputType.FILE
         )
 
+        val engName: String = driver.findElement(
+            By.cssSelector("#item-name-lang > span:nth-child(1)")
+        ).text
+
         val file = NamedFile("$itemName.jpg", ChannelProvider { srcFile.inputStream().toByteReadChannel() })
 
-        response.respond {
-            files.add(file)
-        }
-
-        driver.quit()
-    }
-
-    init {
-        println("$command module registered!")
-        launch {
-            kord.createGlobalChatInputCommand(
-                command, "타로트맛 타로트에서 아이템을 검색합니다"
-            ) {
-                string(ARGUMENT_ITEM_NAME, "아이템 이름") {
-                    required = true
+        // Search Item Price
+        val itemId: Int? = ItemTableDao.getItemIdByName(itemName) ?: run {
+            JsonItemFinder.findItemIdByEnField(engName)?.also { itemIdFromJson ->
+                transaction {
+                    ItemTableDao.insertOrReplaceItem(itemName, itemIdFromJson)
                 }
             }
         }
+
+        val itemPrice = itemId?.let {
+            UniversalisClient().fetchItemPrice(UniversalisWorlds.Tonberry.worldId, itemId)?.toReadableString()
+        } ?: "ItemID 확인 불가"
+
+        response.respond {
+            files.add(file)
+            content = itemPrice
+        }
+
+        driver.quit()
     }
 }
