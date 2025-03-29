@@ -1,4 +1,4 @@
-package universalis
+package feature.universalis
 
 
 import kotlinx.serialization.SerialName
@@ -367,7 +367,7 @@ data class UniversalisItemPrice(
     }
 }
 
-fun UniversalisItemPrice.toReadableString(): String {
+fun UniversalisItemPrice.getSummary(): String {
     if (results.isNullOrEmpty()) {
         return "결과가 없습니다."
     }

@@ -1,4 +1,4 @@
-package universalis
+package feature.universalis
 
 enum class UniversalisWorlds(val worldId: Int) {
     Carbuncle(2075),

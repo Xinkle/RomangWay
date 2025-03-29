@@ -1,4 +1,4 @@
-package universalis
+package feature.universalis
 
 import io.ktor.client.*
 import io.ktor.client.call.*
@@ -23,6 +23,17 @@ class UniversalisClient {
         val url = "https://universalis.app/api/v2/aggregated/$worldId/$itemId"
         return try {
             client.get(url).body() // Automatically deserializes to UniversalisItemPrice
+        } catch (e: Exception) {
+            println("Error fetching data: ${e.message}")
+            null
+        }
+    }
+
+    suspend fun fetchDetailItemPrice(worldId: Int, itemId: Int): UniversalisDetailItemPrice? {
+        val url = "https://universalis.app/api/v2/$worldId/$itemId?listings=10"
+
+        return try {
+            client.get(url).body()
         } catch (e: Exception) {
             println("Error fetching data: ${e.message}")
             null
