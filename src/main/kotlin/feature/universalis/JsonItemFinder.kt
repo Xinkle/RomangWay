@@ -1,4 +1,4 @@
-package universalis
+package feature.universalis
 
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json

@@ -5,6 +5,9 @@ import database.ItemTableDao
 import dev.kord.core.behavior.interaction.response.respond
 import dev.kord.core.entity.interaction.GuildChatInputCommandInteraction
 import dev.kord.rest.NamedFile
+import feature.universalis.JsonItemFinder
+import feature.universalis.UniversalisClient
+import feature.universalis.UniversalisWorlds
 import io.ktor.client.request.forms.*
 import io.ktor.utils.io.jvm.javaio.*
 import kotlinx.coroutines.CoroutineScope
@@ -16,10 +19,6 @@ import org.openqa.selenium.OutputType
 import org.openqa.selenium.WebDriver
 import org.openqa.selenium.chrome.ChromeOptions
 import org.openqa.selenium.remote.RemoteWebDriver
-import universalis.JsonItemFinder
-import universalis.UniversalisClient
-import universalis.UniversalisWorlds
-import universalis.toReadableString
 import java.net.URL
 import kotlin.coroutines.CoroutineContext
 
@@ -108,13 +107,20 @@ class ItemSearchFeature : CoroutineScope, GuildChatInputCommandInteractionListen
             }
         }
 
-        val itemPrice = itemId?.let {
-            UniversalisClient().fetchItemPrice(UniversalisWorlds.Tonberry.worldId, itemId)?.toReadableString()
-        } ?: "ItemID 확인 불가"
+        val itemPrices = itemId?.let {
+            UniversalisWorlds.entries.map { server ->
+                UniversalisClient().fetchDetailItemPrice(server.worldId, itemId)
+            }
+        }?.sortedBy {
+            it?.currentAveragePrice
+        }?.map {
+            it?.getSummary()
+        }?.joinToString("\n")
+            ?: "ItemID 확인 불가"
 
         response.respond {
             files.add(file)
-            content = itemPrice
+            content = itemPrices
         }
 
         driver.quit()
