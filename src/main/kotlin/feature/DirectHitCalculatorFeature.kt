@@ -1,7 +1,7 @@
 package feature
 
 import dev.kord.core.behavior.interaction.response.respond
-import dev.kord.core.entity.interaction.GuildChatInputCommandInteraction
+import dev.kord.core.entity.interaction.ChatInputCommandInteraction
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
 import kotlin.coroutines.CoroutineContext
@@ -9,7 +9,7 @@ import kotlin.math.ceil
 
 private const val ARGUMENT_DIRECT_HIT = "직격"
 
-class DirectHitCalculatorFeature : CoroutineScope, GuildChatInputCommandInteractionListener {
+class DirectHitCalculatorFeature : CoroutineScope, ChatInputCommandInteractionListener {
     override val coroutineContext: CoroutineContext
         get() = SupervisorJob()
 
@@ -24,7 +24,7 @@ class DirectHitCalculatorFeature : CoroutineScope, GuildChatInputCommandInteract
         )
     )
 
-    override suspend fun onGuildChatInputCommand(interaction: GuildChatInputCommandInteraction) {
+    override suspend fun onGuildChatInputCommand(interaction: ChatInputCommandInteraction) {
         val command = interaction.command
         val response = interaction.deferPublicResponse()
 

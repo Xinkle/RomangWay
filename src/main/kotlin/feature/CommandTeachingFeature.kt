@@ -5,7 +5,7 @@ import database.findCommand
 import database.findSimilarCommands
 import dev.kord.core.Kord
 import dev.kord.core.behavior.interaction.response.respond
-import dev.kord.core.entity.interaction.GuildChatInputCommandInteraction
+import dev.kord.core.entity.interaction.ChatInputCommandInteraction
 import dev.kord.core.event.message.MessageCreateEvent
 import dev.kord.core.on
 import kotlinx.coroutines.CoroutineScope
@@ -17,7 +17,7 @@ private const val ARGUMENT_COMMAND_NAME = "명령어"
 private const val ARGUMENT_COMMAND_DESCRIPTION = "설명"
 
 class CommandTeachingFeature(kord: Kord) :
-    CoroutineScope, GuildChatInputCommandInteractionListener {
+    CoroutineScope, ChatInputCommandInteractionListener {
     override val coroutineContext: CoroutineContext
         get() = SupervisorJob()
 
@@ -38,27 +38,22 @@ class CommandTeachingFeature(kord: Kord) :
         )
     )
 
-    override suspend fun onGuildChatInputCommand(interaction: GuildChatInputCommandInteraction) {
+    override suspend fun onGuildChatInputCommand(interaction: ChatInputCommandInteraction) {
         val command = interaction.command
         val response = interaction.deferPublicResponse()
 
         try {
             println("New command register requested!")
 
-            val writer = interaction.user.memberData.nick.value
-                ?: interaction.user.data.globalName.value
-                ?: interaction.user.data.username
-
+            val writer = interaction.getWriter()
             val writerId = interaction.user.id
-
-            println("Writer -> ${interaction.user.memberData}")
 
             val commandName = command.strings[ARGUMENT_COMMAND_NAME]!!.trimStart('!')
             val modifiedName = "!$commandName"
             val description = command.strings[ARGUMENT_COMMAND_DESCRIPTION]!!
 
             transaction {
-                val newRecord = createCommandTeaching(modifiedName, description, writer, writer)
+                val newRecord = createCommandTeaching(modifiedName, description, writer)
                 println(newRecord)
             }
 

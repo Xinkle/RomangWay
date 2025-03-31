@@ -1,7 +1,7 @@
 import database.CommandTeachingTable
 import database.ItemTable
 import dev.kord.core.Kord
-import dev.kord.core.event.interaction.GuildChatInputCommandInteractionCreateEvent
+import dev.kord.core.event.interaction.ChatInputCommandInteractionCreateEvent
 import dev.kord.core.on
 import dev.kord.gateway.Intent
 import dev.kord.gateway.PrivilegedIntent
@@ -50,6 +50,8 @@ suspend fun main() = withContext(Dispatchers.IO) {
     val directHitCalculatorFeature = DirectHitCalculatorFeature()
     val openAiChatFeature = OpenAiChatFeature(kord)
     val topSimulatorFeature = TopSimulatorFeature(kord)
+    val commandDeletingFeature = CommandDeletingFeature()
+    val commandRestoringFeature = CommandRestoringFeature()
 
     // 등록할 커맨드 기능 리스트 구성
     val commandList = listOf(
@@ -59,7 +61,9 @@ suspend fun main() = withContext(Dispatchers.IO) {
         itemSearchFeature,
         directHitCalculatorFeature,
         ffLogDeathAnalyzeFeature,
-        topSimulatorFeature
+        topSimulatorFeature,
+        commandDeletingFeature,
+        commandRestoringFeature
     )
 
     // 각 커맨드 기능을 등록 (이미 등록된 글로벌 커맨드 목록과 비교하여 처리)
@@ -68,7 +72,7 @@ suspend fun main() = withContext(Dispatchers.IO) {
     }
 
     // Guild(서버) 내에서 채팅 입력 커맨드 상호작용 이벤트 리스너 등록
-    kord.on<GuildChatInputCommandInteractionCreateEvent> {
+    kord.on<ChatInputCommandInteractionCreateEvent> {
         val command = interaction.command
 
         try {
@@ -79,6 +83,7 @@ suspend fun main() = withContext(Dispatchers.IO) {
             e.printStackTrace()
         }
     }
+
 
     // 데이터베이스 스키마 설정: 필요한 테이블 생성
     transaction {
