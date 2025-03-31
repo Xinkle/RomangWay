@@ -4,7 +4,7 @@ import dev.kord.common.entity.ButtonStyle
 import dev.kord.core.Kord
 import dev.kord.core.behavior.interaction.response.respond
 import dev.kord.core.behavior.interaction.updateEphemeralMessage
-import dev.kord.core.entity.interaction.GuildChatInputCommandInteraction
+import dev.kord.core.entity.interaction.ChatInputCommandInteraction
 import dev.kord.core.event.interaction.GuildButtonInteractionCreateEvent
 import dev.kord.core.event.interaction.GuildSelectMenuInteractionCreateEvent
 import dev.kord.core.on
@@ -12,8 +12,8 @@ import dev.kord.rest.builder.component.ActionRowBuilder
 import dev.kord.rest.builder.component.MessageComponentBuilder
 import dev.kord.rest.builder.component.option
 import feature.ArgumentType
+import feature.ChatInputCommandInteractionListener
 import feature.CommandArgument
-import feature.GuildChatInputCommandInteractionListener
 import io.ktor.util.*
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
@@ -52,7 +52,7 @@ private const val ID_P5_ANSWER_D1 = "D1"
 private const val ID_P5_ANSWER_D2 = "D2"
 private const val ID_P5_ANSWER_D3 = "D3"
 
-class TopSimulatorFeature(private val kord: Kord) : CoroutineScope, GuildChatInputCommandInteractionListener {
+class TopSimulatorFeature(private val kord: Kord) : CoroutineScope, ChatInputCommandInteractionListener {
     override val coroutineContext: CoroutineContext
         get() = SupervisorJob()
     override val command: String = "절메가"
@@ -226,7 +226,7 @@ class TopSimulatorFeature(private val kord: Kord) : CoroutineScope, GuildChatInp
         }
     }
 
-    override suspend fun onGuildChatInputCommand(interaction: GuildChatInputCommandInteraction) {
+    override suspend fun onGuildChatInputCommand(interaction: ChatInputCommandInteraction) {
         val command = interaction.command
         val response = interaction.deferEphemeralResponse()
 

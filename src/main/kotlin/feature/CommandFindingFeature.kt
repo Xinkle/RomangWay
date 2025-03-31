@@ -2,13 +2,13 @@ package feature
 
 import database.findSimilarCommands
 import dev.kord.core.behavior.interaction.response.respond
-import dev.kord.core.entity.interaction.GuildChatInputCommandInteraction
+import dev.kord.core.entity.interaction.ChatInputCommandInteraction
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
 import kotlin.coroutines.CoroutineContext
 
 class CommandFindingFeature : CoroutineScope,
-    GuildChatInputCommandInteractionListener {
+    ChatInputCommandInteractionListener {
     override val coroutineContext: CoroutineContext
         get() = SupervisorJob()
 
@@ -23,7 +23,7 @@ class CommandFindingFeature : CoroutineScope,
         )
     )
 
-    override suspend fun onGuildChatInputCommand(interaction: GuildChatInputCommandInteraction) {
+    override suspend fun onGuildChatInputCommand(interaction: ChatInputCommandInteraction) {
         val command = interaction.command
         val response = interaction.deferEphemeralResponse()
 

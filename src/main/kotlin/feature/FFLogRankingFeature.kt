@@ -2,7 +2,7 @@ package feature
 
 import creat.xinkle.Romangway.GetFFlogRanking
 import dev.kord.core.behavior.interaction.response.respond
-import dev.kord.core.entity.interaction.GuildChatInputCommandInteraction
+import dev.kord.core.entity.interaction.ChatInputCommandInteraction
 import feature.model.FFlogRanking
 import feature.model.FFlogRankingSummary
 import fflog.FFLogClient
@@ -17,7 +17,7 @@ private const val ARGUMENT_EXPOSABLE = "공개여부"
 
 class FFLogFeature(
     private val fflogClient: FFLogClient
-) : CoroutineScope, GuildChatInputCommandInteractionListener {
+) : CoroutineScope, ChatInputCommandInteractionListener {
     override val coroutineContext: CoroutineContext
         get() = SupervisorJob()
 
@@ -51,7 +51,7 @@ class FFLogFeature(
         )
     )
 
-    override suspend fun onGuildChatInputCommand(interaction: GuildChatInputCommandInteraction) {
+    override suspend fun onGuildChatInputCommand(interaction: ChatInputCommandInteraction) {
         val command = interaction.command
 
         val name = command.strings[ARGUMENT_NAME]!!

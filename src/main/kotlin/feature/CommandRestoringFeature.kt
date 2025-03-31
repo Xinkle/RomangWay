@@ -10,17 +10,17 @@ import kotlin.coroutines.CoroutineContext
 
 private const val ARGUMENT_COMMAND_NAME = "명령어"
 
-class CommandDeletingFeature : CoroutineScope, ChatInputCommandInteractionListener {
+class CommandRestoringFeature : CoroutineScope, ChatInputCommandInteractionListener {
     override val coroutineContext: CoroutineContext
         get() = SupervisorJob()
 
-    // 명령어 이름은 "삭제"로 설정
-    override val command: String = "삭제"
+    // 명령어 이름은 "복원"으로 설정
+    override val command: String = "복원"
 
     override val arguments = listOf(
         CommandArgument(
             ARGUMENT_COMMAND_NAME,
-            "삭제할 명령어 이름을 입력하세요 (예: !로망웨이)",
+            "복원할 명령어 이름을 입력하세요 (예: !로망웨이)",
             true,
             ArgumentType.STRING
         )
@@ -37,14 +37,14 @@ class CommandDeletingFeature : CoroutineScope, ChatInputCommandInteractionListen
             val commandName = commandInput.strings[ARGUMENT_COMMAND_NAME]!!.trimStart('!')
             val modifiedName = "!$commandName"
 
-            // 트랜잭션 내에서 해당 명령어를 찾아 is_deleted를 업데이트합니다.
-            val deletionSuccess = transaction {
-                val commandsToDelete = findAllCommand(modifiedName)
-                if (commandsToDelete.isNotEmpty()) {
-                    commandsToDelete.forEach {
-                        it.isDeleted = true
+            // 트랜잭션 내에서 해당 명령어를 찾아 is_deleted를 false로 업데이트합니다.
+            val restorationSuccess = transaction {
+                val commandsToRestore = findAllCommand(modifiedName, true)
+                if (commandsToRestore.isNotEmpty()) {
+                    commandsToRestore.forEach {
+                        it.isDeleted = false
                     }
-                    println("Command $modifiedName marked as deleted by $writer")
+                    println("Command $modifiedName restored by $writer")
                     true
                 } else {
                     println("Command $modifiedName not found")
@@ -52,9 +52,9 @@ class CommandDeletingFeature : CoroutineScope, ChatInputCommandInteractionListen
                 }
             }
 
-            if (deletionSuccess) {
+            if (restorationSuccess) {
                 response.respond {
-                    content = "$commandName 명령어를 삭제했습니다, <@$writerId>님!"
+                    content = "$commandName 명령어를 복원했습니다, <@$writerId>님!"
                 }
             } else {
                 response.respond {
@@ -62,9 +62,9 @@ class CommandDeletingFeature : CoroutineScope, ChatInputCommandInteractionListen
                 }
             }
         } catch (e: Exception) {
-            println("Error occurred during command deletion: $e")
+            println("Error occurred during command restoration: $e")
             response.respond {
-                content = "명령어 삭제 중 오류가 발생했습니다."
+                content = "명령어 복원 중 오류가 발생했습니다."
             }
         }
     }

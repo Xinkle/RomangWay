@@ -2,6 +2,7 @@ package feature
 
 import dev.kord.common.entity.DiscordApplicationCommand
 import dev.kord.core.Kord
+import dev.kord.core.entity.interaction.ChatInputCommandInteraction
 import dev.kord.core.entity.interaction.GuildChatInputCommandInteraction
 import dev.kord.rest.builder.interaction.boolean
 import dev.kord.rest.builder.interaction.integer
@@ -21,11 +22,11 @@ enum class ArgumentType {
     BOOLEAN
 }
 
-interface GuildChatInputCommandInteractionListener {
+interface ChatInputCommandInteractionListener {
     val command: String
     val arguments: List<CommandArgument>
 
-    suspend fun onGuildChatInputCommand(interaction: GuildChatInputCommandInteraction)
+    suspend fun onGuildChatInputCommand(interaction: ChatInputCommandInteraction)
     suspend fun registerCommand(kord: Kord, existCommands: List<DiscordApplicationCommand>) {
         val isExist = existCommands.find { it.name == command } != null
 
@@ -57,4 +58,14 @@ interface GuildChatInputCommandInteractionListener {
             println("글로벌 커맨드 '$command' 등록 완료")
         }
     }
+
+    fun ChatInputCommandInteraction.getWriter(): String =
+        if (this is GuildChatInputCommandInteraction) {
+            user.nickname
+                ?: user.globalName
+                ?: user.username
+        } else {
+            user.globalName
+                ?: user.username
+        }
 }
