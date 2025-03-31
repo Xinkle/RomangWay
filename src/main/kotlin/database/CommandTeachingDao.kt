@@ -16,3 +16,20 @@ fun findSimilarCommands(commandName: String): List<CommandTeaching> = transactio
 
     CommandTeaching.find(CommandTeachingTable.name like likeContentQuery).toList()
 }
+
+fun createCommandTeaching(
+    modifiedName: String,
+    description: String,
+    writer: String,
+    discordUniqueId: String
+): CommandTeaching = transaction {
+    CommandTeaching.new {
+        name = modifiedName
+        this.description = description
+        this.writer = writer
+        this.discordUniqueId = discordUniqueId
+        isOverridable = false
+        isDeleted = false
+        createDate = System.currentTimeMillis()
+    }
+}

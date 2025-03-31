@@ -1,6 +1,6 @@
 package feature
 
-import database.CommandTeaching
+import database.createCommandTeaching
 import database.findCommand
 import database.findSimilarCommands
 import dev.kord.core.Kord
@@ -45,7 +45,10 @@ class CommandTeachingFeature(kord: Kord) :
         try {
             println("New command register requested!")
 
-            val writer = interaction.user.memberData.nick.value ?: interaction.user.data.username
+            val writer = interaction.user.memberData.nick.value
+                ?: interaction.user.data.globalName.value
+                ?: interaction.user.data.username
+
             val writerId = interaction.user.id
 
             println("Writer -> ${interaction.user.memberData}")
@@ -55,13 +58,7 @@ class CommandTeachingFeature(kord: Kord) :
             val description = command.strings[ARGUMENT_COMMAND_DESCRIPTION]!!
 
             transaction {
-                val newRecord = CommandTeaching.new {
-                    this.name = modifiedName
-                    this.description = description
-                    this.writer = writer
-                    this.isOverridable = false
-                    this.createDate = System.currentTimeMillis()
-                }
+                val newRecord = createCommandTeaching(modifiedName, description, writer, writer)
                 println(newRecord)
             }
 
