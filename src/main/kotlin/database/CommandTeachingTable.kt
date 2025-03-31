@@ -10,6 +10,7 @@ object CommandTeachingTable : IntIdTable() {
     val description = text("description")
     val writer = text("writer")
     val isOverridable = bool("is_overridable")
+    val isDeleted = bool("is_deleted")
     val createDate = long("create_date")
 }
 
@@ -20,5 +21,6 @@ class CommandTeaching(id: EntityID<Int>) : IntEntity(id) {
     var description by CommandTeachingTable.description
     var writer by CommandTeachingTable.writer
     var isOverridable by CommandTeachingTable.isOverridable
+    var isDeleted by CommandTeachingTable.isDeleted
     var createDate by CommandTeachingTable.createDate
 }

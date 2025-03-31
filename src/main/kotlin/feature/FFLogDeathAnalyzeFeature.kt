@@ -4,7 +4,7 @@ import creat.xinkle.Romangway.GetFFlogDeath
 import creat.xinkle.Romangway.GetFFlogFight
 import dev.kord.core.Kord
 import dev.kord.core.behavior.interaction.response.respond
-import dev.kord.core.entity.interaction.GuildChatInputCommandInteraction
+import dev.kord.core.entity.interaction.ChatInputCommandInteraction
 import dev.kord.core.event.interaction.GuildSelectMenuInteractionCreateEvent
 import dev.kord.core.on
 import dev.kord.rest.builder.component.ActionRowBuilder
@@ -28,7 +28,7 @@ private const val KEY_DETAIL_ANALYZED = "DEATH_ID"
 class FFLogDeathAnalyzeFeature(
     private val kord: Kord,
     private val fflogClient: FFLogClient
-) : CoroutineScope, GuildChatInputCommandInteractionListener {
+) : CoroutineScope, ChatInputCommandInteractionListener {
     override val coroutineContext: CoroutineContext
         get() = SupervisorJob()
     override val command: String = "데스로그"
@@ -59,7 +59,7 @@ class FFLogDeathAnalyzeFeature(
         }
     }
 
-    override suspend fun onGuildChatInputCommand(interaction: GuildChatInputCommandInteraction) {
+    override suspend fun onGuildChatInputCommand(interaction: ChatInputCommandInteraction) {
         val command = interaction.command
 
         //https://www.fflogs.com/reports/h2AtPxBG3Xmpg4Fd#fight=3

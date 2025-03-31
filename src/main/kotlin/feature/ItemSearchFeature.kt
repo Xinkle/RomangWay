@@ -3,7 +3,7 @@ package feature
 import Prop
 import database.ItemTableDao
 import dev.kord.core.behavior.interaction.response.respond
-import dev.kord.core.entity.interaction.GuildChatInputCommandInteraction
+import dev.kord.core.entity.interaction.ChatInputCommandInteraction
 import dev.kord.rest.NamedFile
 import feature.universalis.JsonItemFinder
 import feature.universalis.UniversalisClient
@@ -24,7 +24,7 @@ import kotlin.coroutines.CoroutineContext
 
 private const val ARGUMENT_ITEM_NAME = "아이템_이름"
 
-class ItemSearchFeature : CoroutineScope, GuildChatInputCommandInteractionListener {
+class ItemSearchFeature : CoroutineScope, ChatInputCommandInteractionListener {
     override val coroutineContext: CoroutineContext
         get() = SupervisorJob()
 
@@ -39,7 +39,7 @@ class ItemSearchFeature : CoroutineScope, GuildChatInputCommandInteractionListen
         )
     )
 
-    override suspend fun onGuildChatInputCommand(interaction: GuildChatInputCommandInteraction) {
+    override suspend fun onGuildChatInputCommand(interaction: ChatInputCommandInteraction) {
         val command = interaction.command
         val response = interaction.deferPublicResponse()
 
