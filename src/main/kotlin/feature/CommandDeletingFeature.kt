@@ -1,0 +1,4 @@
+package feature
+
+class CommandDeletingFeature {
+}
