@@ -1,8 +1,71 @@
 import com.expediagroup.graphql.plugin.gradle.config.GraphQLSerializer
 import com.expediagroup.graphql.plugin.gradle.graphql
+import java.io.File
+import java.net.URI
+import java.net.URLEncoder
+import java.net.http.HttpClient
+import java.net.http.HttpRequest
+import java.net.http.HttpResponse
+import java.nio.charset.StandardCharsets
+import java.util.Properties
 
 val exposedVersion: String by project
 val ktorVersion: String by project
+
+fun loadSecretProfileProperty(key: String): String? {
+    val secretFile = File(rootDir, "secret_profile.properties")
+    if (!secretFile.exists()) return null
+
+    val properties = Properties()
+    secretFile.inputStream().use(properties::load)
+    return properties.getProperty(key)?.trim()?.takeIf { it.isNotEmpty() }
+}
+
+fun urlEncode(value: String): String = URLEncoder.encode(value, StandardCharsets.UTF_8)
+
+fun requestFFLogsBearerToken(clientId: String, clientSecret: String): String {
+    val requestBody = buildString {
+        append("grant_type=").append(urlEncode("client_credentials"))
+        append("&client_id=").append(urlEncode(clientId))
+        append("&client_secret=").append(urlEncode(clientSecret))
+    }
+
+    val response = HttpClient.newHttpClient().send(
+        HttpRequest.newBuilder()
+            .uri(URI("https://www.fflogs.com/oauth/token"))
+            .header("Content-Type", "application/x-www-form-urlencoded")
+            .POST(HttpRequest.BodyPublishers.ofString(requestBody))
+            .build(),
+        HttpResponse.BodyHandlers.ofString()
+    )
+
+    if (response.statusCode() !in 200..299) {
+        throw GradleException("Failed to issue FFLogs token (HTTP ${response.statusCode()})")
+    }
+
+    return Regex("\"access_token\"\\s*:\\s*\"([^\"]+)\"")
+        .find(response.body())
+        ?.groupValues
+        ?.get(1)
+        ?: throw GradleException("Failed to parse FFLogs access token from OAuth response.")
+}
+
+val fflogsClientId = providers.environmentVariable("FFLOGS_CLIENT_ID").orNull
+    ?: providers.environmentVariable("FFLOG_CLIENT_ID").orNull
+    ?: loadSecretProfileProperty("fflog_client_id")
+val fflogsClientSecret = providers.environmentVariable("FFLOGS_CLIENT_SECRET").orNull
+    ?: providers.environmentVariable("FFLOG_CLIENT_SECRET").orNull
+    ?: loadSecretProfileProperty("fflog_client_secret")
+val fflogsBearerToken: String by lazy {
+    val clientId = requireNotNull(fflogsClientId) {
+        "FFLogs client id is required. Set FFLOGS_CLIENT_ID/FFLOG_CLIENT_ID or secret_profile.properties:fflog_client_id"
+    }
+    val clientSecret = requireNotNull(fflogsClientSecret) {
+        "FFLogs client secret is required. Set FFLOGS_CLIENT_SECRET/FFLOG_CLIENT_SECRET or secret_profile.properties:fflog_client_secret"
+    }
+
+    requestFFLogsBearerToken(clientId, clientSecret)
+}
 
 plugins {
     kotlin("jvm") version "2.0.0"
@@ -43,7 +106,7 @@ graphql {
         endpoint = "https://www.fflogs.com/api/v2/client"
         packageName = "creat.xinkle.Romangway"
         headers = mapOf(
-            "authorization" to "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJhdWQiOiI5ZTBhYWNjNy00NDk2LTQyYzQtYTg1YS1lOWI1OGM1OWUzMzUiLCJqdGkiOiJjNjZhMTA2MTYzN2Q1MjBkMDY1NDYzNDQ2OWFjMTM2YzllODNiN2RlNWYwYjI1OGM3OWQ1M2JiYWUyMzg2Yjk4ZTUyNThmOTNhOThmNDU5MCIsImlhdCI6MTczNzY4NzE5NC42NzUxNTQsIm5iZiI6MTczNzY4NzE5NC42NzUxNTgsImV4cCI6MTc2ODc5MTE5NC42Njc2MDMsInN1YiI6IiIsInNjb3BlcyI6WyJ2aWV3LXVzZXItcHJvZmlsZSIsInZpZXctcHJpdmF0ZS1yZXBvcnRzIl19.kYsSlygVIRTfiil31BUze3WsUMlERXvhAq2RT_mA2E7P3Ar02rw_14rcuOP5Wk2RldtQl0USNeaHkg73PF23x2AYNQ_QRBydJL8jOESq7sdrFGTZ7hW84zTd5VRS0_EHWsP_LcB0L6o_hssyJrSIgN7k0mLGCMX_-xS1dOvxJlG2GRUzbOFyohmmWGLWMYge97GUdwQEVCMdz4f9516V6uutHrHNDOsAxUrCy1PUnvKay5ki0DSJMgfaYn61DFxQaTPPffLCjitDgkp-4RUYfa8BsG8yYH5nNPv_hRE8TnpcytUc6reazlm9z9uyBgx6-LEraBFPA6CgSgWkSvEj-WNfGvkGsiMm_1-iUM0XaV9qsV7OWVQ1iL-L0YWeHBRQ5lva9t96vgkDVb50nxldkRwi1gyOjgwcWYhRQBQPbfOepBfl-Sn-1YtqAldNN89Hu4buDEqP12wPAiLCzTf6251OYSg_YNkp2T3Vtcz61zON0Mz1nnxY8rDTYRylyvE77fw0qau1q-4aUw7R-wLsYqLDaRlzT8vlH_lSOAFdidp1duP0JZS2MbznJpLhqTDxMpaZK8GdeqfavpdmTiJO-QkmTUOcVx-BEHXRzSLUS_ovAfHjvDc49UwTwjTilwg_ETMEpPdZQMy4vx0B57kuxGfVqIA9TnSZS9WmSoKWSpY"
+            "authorization" to "Bearer $fflogsBearerToken"
         )
         serializer = GraphQLSerializer.KOTLINX
     }
