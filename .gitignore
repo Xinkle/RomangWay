@@ -139,6 +139,7 @@ gradle-app.setting
 hs_err_pid*
 
 /secret_profile.properties
+/run_local.sh
 /database/romangway.db
 /.idea/deployment.xml
 /.idea/sshConfigs.xml
