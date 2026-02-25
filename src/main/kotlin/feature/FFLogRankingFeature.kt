@@ -7,31 +7,22 @@ import dev.kord.core.entity.interaction.ChatInputCommandInteraction
 import feature.model.FFlogRanking
 import feature.model.FFlogRankingSummary
 import feature.model.FFlogZones
+import fflog.FFlogJson
 import fflog.FFLogClient
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.serialization.json.Json
 import kotlin.coroutines.CoroutineContext
 
 private const val ARGUMENT_NAME = "이름"
 private const val ARGUMENT_SERVER = "서버"
 private const val ARGUMENT_EXPOSABLE = "공개여부"
 
-private data class SavageRaidZoneCandidate(
-    val zoneId: Int,
-    val zoneName: String,
-    val difficultyId: Int
-)
-
 class FFLogFeature(
     private val fflogClient: FFLogClient
 ) : CoroutineScope, ChatInputCommandInteractionListener {
     override val coroutineContext: CoroutineContext
         get() = SupervisorJob()
-    private val json = Json {
-        ignoreUnknownKeys = true
-        explicitNulls = false
-    }
+    private val json = FFlogJson.parser
 
     private val serverMapping = mapOf(
         "톤베리" to "Tonberry",
@@ -81,10 +72,7 @@ class FFLogFeature(
             requireNotNull(mappedServer) { "서버 이름이 올바르지 않습니다." }
 
             val ranking = getFFlog(name, mappedServer)
-            val specNames = ranking.data?.characterData?.character?.zoneRankings?.allStars
-                ?.mapNotNull { it?.spec }
-                ?.distinct()
-                ?: emptyList()
+            val specNames = FFlogRankingLogic.extractSpecNames(ranking)
             val savageRaidZoneCandidates = getSavageRaidZoneCandidates()
 
             val summaries = specNames.mapNotNull { specName ->
@@ -95,7 +83,7 @@ class FFLogFeature(
                     savageRaidZoneCandidates = savageRaidZoneCandidates
                 ) ?: return@mapNotNull null
 
-                if (!specRanking.hasTierClearRanking()) {
+                if (!FFlogRankingLogic.hasTierClearRanking(specRanking)) {
                     return@mapNotNull null
                 }
 
@@ -120,15 +108,6 @@ class FFLogFeature(
         }
     }
 
-    private fun FFlogRanking.hasTierClearRanking(): Boolean {
-        val rankings = data?.characterData?.character?.zoneRankings?.rankings ?: return false
-        val finalEncounterRanking = rankings.lastOrNull() ?: return false
-        return (finalEncounterRanking.totalKills ?: 0) > 0
-    }
-
-    private fun FFlogRanking.getZoneId(): Int? =
-        data?.characterData?.character?.zoneRankings?.zone
-
     private suspend fun findLatestSavageClearRanking(
         name: String,
         server: String,
@@ -136,11 +115,11 @@ class FFLogFeature(
         savageRaidZoneCandidates: List<SavageRaidZoneCandidate>
     ): FFlogRanking? {
         val latestRanking = getFFlog(name = name, server = server, spec = spec)
-        if (latestRanking.hasTierClearRanking()) {
+        if (FFlogRankingLogic.hasTierClearRanking(latestRanking)) {
             return latestRanking
         }
 
-        val currentZoneId = latestRanking.getZoneId()
+        val currentZoneId = FFlogRankingLogic.getZoneId(latestRanking)
 
         for (zone in savageRaidZoneCandidates) {
             if (zone.zoneId == currentZoneId) continue
@@ -153,7 +132,7 @@ class FFLogFeature(
                 difficulty = zone.difficultyId
             )
 
-            if (ranking.hasTierClearRanking()) {
+            if (FFlogRankingLogic.hasTierClearRanking(ranking)) {
                 return ranking
             }
         }
@@ -161,40 +140,11 @@ class FFLogFeature(
         return null
     }
 
-    private fun FFlogZones.toSavageRaidZoneCandidates(): List<SavageRaidZoneCandidate> {
-        return data?.worldData?.zones
-            ?.asSequence()
-            ?.filterNotNull()
-            ?.mapNotNull { zone ->
-                val savageDifficulty = zone.difficulties
-                    ?.filterNotNull()
-                    ?.firstOrNull { difficulty ->
-                        difficulty.name == "Savage" &&
-                            (difficulty.sizes?.filterNotNull()?.contains(8) == true)
-                    } ?: return@mapNotNull null
-
-                val encounterCount = zone.encounters?.count { it?.id != null } ?: 0
-                if (encounterCount < 4) return@mapNotNull null
-
-                val zoneId = zone.id ?: return@mapNotNull null
-                val difficultyId = savageDifficulty.id ?: return@mapNotNull null
-
-                SavageRaidZoneCandidate(
-                    zoneId = zoneId,
-                    zoneName = zone.name ?: "Unknown Zone",
-                    difficultyId = difficultyId
-                )
-            }
-            ?.sortedByDescending { it.zoneId }
-            ?.toList()
-            ?: emptyList()
-    }
-
     private suspend fun getSavageRaidZoneCandidates(): List<SavageRaidZoneCandidate> {
         val result = fflogClient.executeQuery(GetFFlogSavageZones())
         val zones: FFlogZones = json.decodeFromString(result)
 
-        return zones.toSavageRaidZoneCandidates()
+        return FFlogRankingLogic.toSavageRaidZoneCandidates(zones)
     }
 
     private suspend fun getFFlog(

@@ -1,0 +1,97 @@
+{
+  "data": {
+    "characterData": {
+      "character": {
+        "zoneRankings": {
+          "bestPerformanceAverage": 82.87485,
+          "medianPerformanceAverage": 79.15885,
+          "difficulty": 101,
+          "metric": "dps",
+          "partition": -1,
+          "zone": 73,
+          "size": 8,
+          "allStars": [
+            {
+              "partition": 5,
+              "spec": "Sage",
+              "points": 211.629,
+              "possiblePoints": 600,
+              "rank": 123,
+              "regionRank": 123,
+              "serverRank": 25,
+              "rankPercent": 54.4,
+              "total": 268,
+              "rankTooltip": null
+            },
+            {
+              "partition": 5,
+              "spec": "WhiteMage",
+              "points": 120.0,
+              "possiblePoints": 600,
+              "rank": 200,
+              "regionRank": 200,
+              "serverRank": 50,
+              "rankPercent": 30.0,
+              "total": 400,
+              "rankTooltip": null
+            }
+          ],
+          "rankings": [
+            {
+              "encounter": { "id": 101, "name": "Boss 1" },
+              "rankPercent": 86.9356,
+              "medianPercent": 79.5036,
+              "lockedIn": true,
+              "totalKills": 4,
+              "fastestKill": 574945,
+              "allStars": {
+                "points": 106.51,
+                "possiblePoints": 120,
+                "partition": 5,
+                "rank": 39,
+                "regionRank": 39,
+                "serverRank": 9,
+                "rankPercent": 84.3621,
+                "total": 243
+              },
+              "spec": "Sage",
+              "bestSpec": "Sage",
+              "bestAmount": 20442.2,
+              "rankTooltip": null,
+              "bestRank": {
+                "rank_id": 212754645,
+                "class": 1,
+                "spec": 19
+              }
+            },
+            {
+              "encounter": { "id": 102, "name": "Boss 2" },
+              "rankPercent": 78.8141,
+              "medianPercent": 78.8141,
+              "lockedIn": true,
+              "totalKills": 1,
+              "fastestKill": 592843,
+              "allStars": null,
+              "spec": "Sage",
+              "bestSpec": "Sage",
+              "bestAmount": 20470.0,
+              "rankTooltip": null
+            },
+            {
+              "encounter": { "id": 103, "name": "Boss 3" },
+              "rankPercent": null,
+              "medianPercent": null,
+              "allStars": null,
+              "lockedIn": true,
+              "totalKills": 0,
+              "fastestKill": 0,
+              "bestAmount": 0,
+              "spec": null,
+              "rankTooltip": null
+            }
+          ]
+        }
+      }
+    }
+  }
+}
