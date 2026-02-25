@@ -43,11 +43,11 @@ data class FFlogRankingSummary(
         fun fromRanking(fflogRanking: FFlogRanking, name: String, server: String): FFlogRankingSummary {
             val ranking = fflogRanking.data!!.characterData!!.character!!.zoneRankings!!
             val allstar = ranking.allStars?.first()
-            val firstFloor = ranking.rankings?.get(0)
-            val secondFloor = ranking.rankings?.get(1)
-            val thirdFloor = ranking.rankings?.get(2)
-            val fourthFloor = ranking.rankings?.get(3)
-            val fifthFloor = ranking.rankings?.get(4)
+            val firstFloor = ranking.rankings?.getOrNull(0)
+            val secondFloor = ranking.rankings?.getOrNull(1)
+            val thirdFloor = ranking.rankings?.getOrNull(2)
+            val fourthFloor = ranking.rankings?.getOrNull(3)
+            val fifthFloor = ranking.rankings?.getOrNull(4)
 
             return FFlogRankingSummary(
                 name = name,
