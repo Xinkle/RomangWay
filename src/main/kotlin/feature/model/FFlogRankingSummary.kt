@@ -38,6 +38,8 @@ data class FFlogRankingSummary(
             "Summoner" to "<:Summoner:938816154561032232>"
         )
 
+        private fun Any?.toDisplayOrNA(): String = this?.toString() ?: "N/A"
+
         fun fromRanking(fflogRanking: FFlogRanking, name: String, server: String): FFlogRankingSummary {
             val ranking = fflogRanking.data!!.characterData!!.character!!.zoneRankings!!
             val allstar = ranking.allStars?.first()
@@ -54,11 +56,11 @@ data class FFlogRankingSummary(
                 allStarPoint = "${allstar?.points} / ${allstar?.possiblePoints}",
                 allStarPercent = "${allstar?.rankPercent?.times(10.0)?.let { floor(it) }?.div(10.0)}",
                 allStarRankings = "${allstar?.rank} / ${allstar?.total}",
-                firstFloor = "${firstFloor?.rankPercent}",
-                secondFloor = "${secondFloor?.rankPercent}",
-                thirdFloor = "${thirdFloor?.rankPercent}",
-                fourthFloor = "${fourthFloor?.rankPercent}",
-                fifthFloor = "${fifthFloor?.rankPercent}",
+                firstFloor = firstFloor?.rankPercent.toDisplayOrNA(),
+                secondFloor = secondFloor?.rankPercent.toDisplayOrNA(),
+                thirdFloor = thirdFloor?.rankPercent.toDisplayOrNA(),
+                fourthFloor = fourthFloor?.rankPercent.toDisplayOrNA(),
+                fifthFloor = fifthFloor?.rankPercent.toDisplayOrNA(),
             )
         }
     }

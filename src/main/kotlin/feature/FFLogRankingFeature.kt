@@ -20,6 +20,10 @@ class FFLogFeature(
 ) : CoroutineScope, ChatInputCommandInteractionListener {
     override val coroutineContext: CoroutineContext
         get() = SupervisorJob()
+    private val json = Json {
+        ignoreUnknownKeys = true
+        explicitNulls = false
+    }
 
     private val serverMapping = mapOf(
         "톤베리" to "Tonberry",
@@ -89,10 +93,9 @@ class FFLogFeature(
             )
         )
 
-        val fflogRanking: FFlogRanking = Json.decodeFromString(result)
+        val fflogRanking: FFlogRanking = json.decodeFromString(result)
         println(fflogRanking)
 
         return fflogRanking
     }
 }
-
