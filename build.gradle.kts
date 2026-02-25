@@ -68,9 +68,9 @@ val fflogsBearerToken: String by lazy {
 }
 
 plugins {
-    kotlin("jvm") version "2.0.0"
+    kotlin("jvm") version "2.2.10"
     application
-    id("org.jetbrains.kotlin.plugin.serialization") version "2.0.0"
+    id("org.jetbrains.kotlin.plugin.serialization") version "2.2.10"
     id("com.expediagroup.graphql") version "6.2.5"
     id("com.github.johnrengelman.shadow") version "7.1.2"
 }
@@ -84,7 +84,7 @@ repositories {
 }
 
 dependencies {
-    implementation("dev.kord:kord-core:0.15.0")
+    implementation("dev.kord:kord-core:0.17.0")
     testImplementation(kotlin("test"))
     implementation("org.jetbrains.exposed:exposed-core:$exposedVersion")
     implementation("org.jetbrains.exposed:exposed-dao:$exposedVersion")
@@ -98,7 +98,7 @@ dependencies {
     implementation("org.seleniumhq.selenium:selenium-chrome-driver:4.6.0")
     implementation("org.mariadb.jdbc:mariadb-java-client:3.4.1")
     implementation("org.slf4j:slf4j-simple:2.0.3")
-    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.4.1")
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.9.0")
 }
 
 graphql {
