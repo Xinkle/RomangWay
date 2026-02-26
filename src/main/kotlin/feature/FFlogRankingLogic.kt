@@ -11,16 +11,22 @@ data class SavageRaidZoneCandidate(
 
 object FFlogRankingLogic {
     fun extractSpecNames(ranking: FFlogRanking): List<String> {
-        return ranking.data?.characterData?.character?.zoneRankings?.allStars
-            ?.mapNotNull { it?.spec }
-            ?.distinct()
-            ?: emptyList()
+        val zoneRankings = ranking.data?.characterData?.character?.zoneRankings
+        val allStarSpecs = zoneRankings?.allStars.orEmpty().mapNotNull { it?.spec }
+        val rankingSpecs = zoneRankings?.rankings.orEmpty().mapNotNull { it?.spec }
+
+        return (allStarSpecs + rankingSpecs).distinct()
     }
 
     fun hasTierClearRanking(ranking: FFlogRanking): Boolean {
         val rankings = ranking.data?.characterData?.character?.zoneRankings?.rankings ?: return false
         val finalEncounterRanking = rankings.lastOrNull() ?: return false
         return (finalEncounterRanking.totalKills ?: 0) > 0
+    }
+
+    fun hasAnyTierProgress(ranking: FFlogRanking): Boolean {
+        val rankings = ranking.data?.characterData?.character?.zoneRankings?.rankings ?: return false
+        return rankings.any { (it?.totalKills ?: 0) > 0 }
     }
 
     fun getZoneId(ranking: FFlogRanking): Int? =
@@ -54,4 +60,7 @@ object FFlogRankingLogic {
             ?.toList()
             ?: emptyList()
     }
+
+    fun findCurrentTopSavageZoneCandidate(zones: FFlogZones): SavageRaidZoneCandidate? =
+        toSavageRaidZoneCandidates(zones).firstOrNull()
 }
