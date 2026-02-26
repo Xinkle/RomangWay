@@ -4,8 +4,6 @@ on:
   push:
     branches:
       - main
-    tags:
-      - "v*"
   workflow_dispatch:
 
 permissions:
@@ -19,8 +17,56 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Extract Gradle app version
+        id: gradle_version
+        run: |
+          VERSION=$(sed -n 's/^version = "\(.*\)"/\1/p' build.gradle.kts | head -n 1)
+          test -n "$VERSION" || { echo "Failed to parse version from build.gradle.kts"; exit 1; }
+          echo "value=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Check whether Gradle version changed
+        id: version_change
+        run: |
+          CURRENT_VERSION="${{ steps.gradle_version.outputs.value }}"
+
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "should_publish=true" >> "$GITHUB_OUTPUT"
+            echo "reason=manual_dispatch" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          BEFORE_SHA="${{ github.event.before }}"
+          if [ -z "$BEFORE_SHA" ] || [ "$BEFORE_SHA" = "0000000000000000000000000000000000000000" ]; then
+            echo "should_publish=true" >> "$GITHUB_OUTPUT"
+            echo "reason=initial_main_push" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          PREVIOUS_VERSION=$(git show "${BEFORE_SHA}:build.gradle.kts" 2>/dev/null | sed -n 's/^version = "\(.*\)"/\1/p' | head -n 1 || true)
+
+          echo "current_version=$CURRENT_VERSION" >> "$GITHUB_OUTPUT"
+          echo "previous_version=$PREVIOUS_VERSION" >> "$GITHUB_OUTPUT"
+
+          if [ "$CURRENT_VERSION" = "$PREVIOUS_VERSION" ]; then
+            echo "should_publish=false" >> "$GITHUB_OUTPUT"
+            echo "reason=gradle_version_not_changed" >> "$GITHUB_OUTPUT"
+          else
+            echo "should_publish=true" >> "$GITHUB_OUTPUT"
+            echo "reason=gradle_version_changed" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Skip publish (Gradle version unchanged)
+        if: steps.version_change.outputs.should_publish != 'true'
+        run: |
+          echo "Skipping Docker publish: ${{ steps.version_change.outputs.reason }}"
+          echo "Current version: ${{ steps.version_change.outputs.current_version }}"
+          echo "Previous version: ${{ steps.version_change.outputs.previous_version }}"
 
       - name: Validate required secrets for Docker build
+        if: steps.version_change.outputs.should_publish == 'true'
         env:
           FFLOGS_CLIENT_ID: ${{ secrets.FFLOGS_CLIENT_ID }}
           FFLOGS_CLIENT_SECRET: ${{ secrets.FFLOGS_CLIENT_SECRET }}
@@ -30,13 +76,16 @@ jobs:
 
       - name: Set image name
         id: vars
+        if: steps.version_change.outputs.should_publish == 'true'
         run: |
           echo "image=ghcr.io/${GITHUB_REPOSITORY,,}" >> "$GITHUB_OUTPUT"
 
       - name: Set up Docker Buildx
+        if: steps.version_change.outputs.should_publish == 'true'
         uses: docker/setup-buildx-action@v3
 
       - name: Log in to GHCR
+        if: steps.version_change.outputs.should_publish == 'true'
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
@@ -45,16 +94,17 @@ jobs:
 
       - name: Docker metadata
         id: meta
+        if: steps.version_change.outputs.should_publish == 'true'
         uses: docker/metadata-action@v5
         with:
           images: ${{ steps.vars.outputs.image }}
           tags: |
+            type=raw,value=${{ steps.gradle_version.outputs.value }}
             type=raw,value=latest,enable={{is_default_branch}}
-            type=ref,event=branch
-            type=ref,event=tag
             type=sha,prefix=sha-
 
       - name: Build and push
+        if: steps.version_change.outputs.should_publish == 'true'
         uses: docker/build-push-action@v6
         with:
           context: .
@@ -67,4 +117,3 @@ jobs:
           build-args: |
             FFLOGS_CLIENT_ID=${{ secrets.FFLOGS_CLIENT_ID }}
             FFLOGS_CLIENT_SECRET=${{ secrets.FFLOGS_CLIENT_SECRET }}
-
