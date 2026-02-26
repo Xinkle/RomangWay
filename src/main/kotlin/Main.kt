@@ -42,7 +42,7 @@ suspend fun main() = withContext(Dispatchers.IO) {
     fflogClient.refreshToken()
 
     // 각 기능(피처)들의 인스턴스 생성
-    val fflogFeature = FFLogFeature(fflogClient)
+    val fflogFeature = FFLogFeature(kord, fflogClient)
     val ffLogDeathAnalyzeFeature = FFLogDeathAnalyzeFeature(kord, fflogClient)
     val commandTeachingFeature = CommandTeachingFeature(kord)
     val commandFindingFeature = CommandFindingFeature()
