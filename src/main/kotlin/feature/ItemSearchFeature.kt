@@ -84,6 +84,8 @@ class ItemSearchFeature : CoroutineScope, ChatInputCommandInteractionListener {
             return
         }
 
+        val itemIdFromSearchResult = extractItemIdFromItemPageLink(itemPageLink)
+
         driver.get(itemPageLink)
 
         val srcFile = driver.findElement(
@@ -100,9 +102,9 @@ class ItemSearchFeature : CoroutineScope, ChatInputCommandInteractionListener {
 
         // Search Item Price
         val itemId: Int? = ItemTableDao.getItemIdByName(itemName) ?: run {
-            JsonItemFinder.findItemIdByEnField(engName)?.also { itemIdFromJson ->
+            (itemIdFromSearchResult ?: JsonItemFinder.findItemIdByEnField(engName))?.also { resolvedItemId ->
                 transaction {
-                    ItemTableDao.insertOrReplaceItem(itemName, itemIdFromJson)
+                    ItemTableDao.insertOrReplaceItem(itemName, resolvedItemId)
                 }
             }
         }
@@ -124,5 +126,18 @@ class ItemSearchFeature : CoroutineScope, ChatInputCommandInteractionListener {
         }
 
         driver.quit()
+    }
+
+    private fun extractItemIdFromItemPageLink(itemPageLink: String): Int? {
+        val patterns = listOf(
+            """/db/item/(\d+)""".toRegex(),
+            """/item/(\d+)""".toRegex(),
+            """[?&]id=(\d+)""".toRegex(),
+            """/(\d+)(?:/)?$""".toRegex()
+        )
+
+        return patterns.firstNotNullOfOrNull { regex ->
+            regex.find(itemPageLink)?.groupValues?.getOrNull(1)?.toIntOrNull()
+        }
     }
 }

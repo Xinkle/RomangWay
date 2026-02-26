@@ -1,0 +1,49 @@
+{
+  "data": {
+    "worldData": {
+      "zones": [
+        {
+          "id": 73,
+          "name": "AAC Light-heavyweight",
+          "encounters": [{ "id": 101 }, { "id": 102 }, { "id": 103 }, { "id": 104 }, { "id": 105 }],
+          "difficulties": [
+            { "id": 100, "name": "Normal", "sizes": [8] },
+            { "id": 101, "name": "Savage", "sizes": [8] }
+          ]
+        },
+        {
+          "id": 72,
+          "name": "The Futures Rewritten",
+          "encounters": [{ "id": 999 }],
+          "difficulties": [
+            { "id": 200, "name": "Ultimate", "sizes": [8] }
+          ]
+        },
+        {
+          "id": 68,
+          "name": "AAC Cruiserweight",
+          "encounters": [{ "id": 1 }, { "id": 2 }, { "id": 3 }, { "id": 4 }],
+          "difficulties": [
+            { "id": 101, "name": "Savage", "sizes": [8] }
+          ]
+        },
+        {
+          "id": 60,
+          "name": "Alliance Raid Example",
+          "encounters": [{ "id": 1 }, { "id": 2 }, { "id": 3 }, { "id": 4 }],
+          "difficulties": [
+            { "id": 101, "name": "Savage", "sizes": [24] }
+          ]
+        },
+        {
+          "id": 59,
+          "name": "Too Short Raid Example",
+          "encounters": [{ "id": 1 }, { "id": 2 }, { "id": 3 }],
+          "difficulties": [
+            { "id": 101, "name": "Savage", "sizes": [8] }
+          ]
+        }
+      ]
+    }
+  }
+}
