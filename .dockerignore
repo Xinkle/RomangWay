@@ -1,0 +1,11 @@
+.git
+.gitignore
+.idea
+.gradle
+.kotlin
+build
+out
+secret_profile.properties
+run_local.sh
+*.log
+docker-compose*.yml

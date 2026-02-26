@@ -1,0 +1,17 @@
+query GetFFlogSavageZones {
+  worldData {
+    zones {
+      id
+      name
+      encounters {
+        id
+        name
+      }
+      difficulties {
+        id
+        name
+        sizes
+      }
+    }
+  }
+}

@@ -1,7 +1,13 @@
-query GetFFlogRanking($name: String, $server: String) {
+query GetFFlogRanking(
+  $name: String,
+  $server: String,
+  $spec: String = "Any",
+  $zoneId: Int = 0,
+  $difficulty: Int = 0
+) {
 	characterData {
 		character(name: $name, serverRegion: "KR", serverSlug: $server) {
-			zoneRankings
+			zoneRankings(specName: $spec, zoneID: $zoneId, difficulty: $difficulty)
 		}
 	}
 }

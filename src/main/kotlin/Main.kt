@@ -42,7 +42,7 @@ suspend fun main() = withContext(Dispatchers.IO) {
     fflogClient.refreshToken()
 
     // 각 기능(피처)들의 인스턴스 생성
-    val fflogFeature = FFLogFeature(fflogClient)
+    val fflogFeature = FFLogFeature(kord, fflogClient)
     val ffLogDeathAnalyzeFeature = FFLogDeathAnalyzeFeature(kord, fflogClient)
     val commandTeachingFeature = CommandTeachingFeature(kord)
     val commandFindingFeature = CommandFindingFeature()
@@ -78,7 +78,7 @@ suspend fun main() = withContext(Dispatchers.IO) {
         try {
             // 들어온 커맨드 이름에 해당하는 기능을 찾아서 실행
             commandList.first { it.command == command.data.name.value }
-                .onGuildChatInputCommand(interaction)
+                .onGuildChatInputCommandSafely(interaction)
         } catch (e: Exception) {
             e.printStackTrace()
         }
