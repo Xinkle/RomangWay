@@ -81,5 +81,35 @@ data class FFlogRankingSummary(
         """.trimIndent()
     }
 
+    fun toEmbedFieldName(): String {
+        val emoji = jobEmojiMapping[job]
+        return listOfNotNull(emoji, job).joinToString(" ").ifEmpty { "직업: N/A" }
+    }
+
+    fun toEmbedFieldValue(): String {
+        return """
+            올스타: $allStarPoint (${allStarPercent ?: "N/A"} / $allStarRankings)
+            1층 $firstFloor | 2층 $secondFloor | 3층 $thirdFloor
+            4층전 $fourthFloor | 4층후 $fifthFloor
+        """.trimIndent()
+    }
+
+    fun toDetailDescriptionWithoutIdentity(): String {
+        return """
+            직업: ${toEmbedFieldName()}
+            올스타 포인트: $allStarPoint
+            올스타 백분위: ${allStarPercent ?: "N/A"}
+            올스타 등수: ${allStarRankings ?: "N/A"}
+            1층: $firstFloor
+            2층: $secondFloor
+            3층: $thirdFloor
+            4층전반: $fourthFloor
+            4층후반: $fifthFloor
+        """.trimIndent()
+    }
+
+    fun allStarPointValueOrDefault(default: Double = -1.0): Double =
+        allStarPoint?.substringBefore("/")?.trim()?.toDoubleOrNull() ?: default
+
 
 }

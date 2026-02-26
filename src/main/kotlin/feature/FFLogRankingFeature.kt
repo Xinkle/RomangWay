@@ -2,27 +2,41 @@ package feature
 
 import creat.xinkle.Romangway.GetFFlogRanking
 import creat.xinkle.Romangway.GetFFlogSavageZones
+import dev.kord.core.Kord
+import dev.kord.core.behavior.interaction.updateEphemeralMessage
+import dev.kord.core.behavior.interaction.updatePublicMessage
 import dev.kord.core.behavior.interaction.response.respond
 import dev.kord.core.entity.interaction.ChatInputCommandInteraction
+import dev.kord.core.event.interaction.GuildSelectMenuInteractionCreateEvent
+import dev.kord.core.on
+import dev.kord.rest.builder.component.ActionRowBuilder
+import dev.kord.rest.builder.component.option
 import feature.model.FFlogRanking
 import feature.model.FFlogRankingSummary
 import feature.model.FFlogZones
 import fflog.FFlogJson
 import fflog.FFLogClient
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
+import dev.kord.rest.builder.message.EmbedBuilder
+import java.util.UUID
+import java.util.concurrent.ConcurrentHashMap
 import kotlin.coroutines.CoroutineContext
 
 private const val ARGUMENT_NAME = "이름"
 private const val ARGUMENT_SERVER = "서버"
 private const val ARGUMENT_EXPOSABLE = "공개여부"
+private const val FFLOG_RANKING_SELECT_PREFIX = "FFLOG_RANKING_SPEC"
 
 class FFLogFeature(
+    private val kord: Kord,
     private val fflogClient: FFLogClient
 ) : CoroutineScope, ChatInputCommandInteractionListener {
     override val coroutineContext: CoroutineContext
         get() = SupervisorJob()
     private val json = FFlogJson.parser
+    private val rankingSelectSessions = ConcurrentHashMap<String, RankingSelectSession>()
 
     private val serverMapping = mapOf(
         "톤베리" to "Tonberry",
@@ -53,6 +67,33 @@ class FFLogFeature(
             ArgumentType.BOOLEAN
         )
     )
+
+    init {
+        launch {
+            kord.on<GuildSelectMenuInteractionCreateEvent> {
+                if (!interaction.componentId.startsWith("$FFLOG_RANKING_SELECT_PREFIX:")) return@on
+
+                val sessionId = interaction.componentId.substringAfter(":", missingDelimiterValue = "")
+                val session = rankingSelectSessions[sessionId] ?: return@on
+                val selectedIndex = interaction.values.firstOrNull()?.toIntOrNull() ?: return@on
+                val selectedSummary = session.summaries.getOrNull(selectedIndex) ?: return@on
+
+                if (session.isPublic) {
+                    interaction.updatePublicMessage {
+                        content = ""
+                        embeds = mutableListOf(buildRankingEmbed(session, selectedSummary))
+                        components = mutableListOf(buildRankingSelectActionRow(sessionId, session.summaries, selectedIndex))
+                    }
+                } else {
+                    interaction.updateEphemeralMessage {
+                        content = ""
+                        embeds = mutableListOf(buildRankingEmbed(session, selectedSummary))
+                        components = mutableListOf(buildRankingSelectActionRow(sessionId, session.summaries, selectedIndex))
+                    }
+                }
+            }
+        }
+    }
 
     override suspend fun onGuildChatInputCommand(interaction: ChatInputCommandInteraction) {
         val command = interaction.command
@@ -88,16 +129,41 @@ class FFLogFeature(
                 }
 
                 FFlogRankingSummary.fromRanking(specRanking, name, server)
-            }
+            }.sortedByDescending { it.allStarPointValueOrDefault() }
 
-            val responseContent = if (summaries.isNotEmpty()) {
-                summaries.joinToString("\n\n")
+            val displaySummaries = if (summaries.isNotEmpty()) {
+                summaries
             } else {
-                FFlogRankingSummary.fromRanking(ranking, name, server).toString()
+                listOf(FFlogRankingSummary.fromRanking(ranking, name, server))
             }
+            val defaultIndex = 0
+            val selectedSummary = displaySummaries[defaultIndex]
+            val sessionId = UUID.randomUUID().toString()
+
+            rankingSelectSessions[sessionId] = RankingSelectSession(
+                name = name,
+                server = server,
+                isPublic = isExposable,
+                summaries = displaySummaries
+            )
 
             response.respond {
-                content = responseContent
+                embeds = mutableListOf(
+                    buildRankingEmbed(
+                        session = rankingSelectSessions.getValue(sessionId),
+                        selectedSummary = selectedSummary
+                    )
+                )
+                if (displaySummaries.size > 1) {
+                    components = mutableListOf(
+                        buildRankingSelectActionRow(
+                            sessionId = sessionId,
+                            summaries = displaySummaries,
+                            selectedIndex = defaultIndex
+                        )
+                    )
+                }
+                content = ""
             }
         } catch (e: Exception) {
             println("Error occurred -> $e")
@@ -171,4 +237,43 @@ class FFLogFeature(
 
         return fflogRanking
     }
+
+    private fun buildRankingEmbed(
+        session: RankingSelectSession,
+        selectedSummary: FFlogRankingSummary
+    ): EmbedBuilder = EmbedBuilder().apply {
+        title = "프프로그 조회 결과"
+        description = """
+            이름: ${session.name}
+            서버: ${session.server}
+
+            ${selectedSummary.toDetailDescriptionWithoutIdentity()}
+        """.trimIndent()
+    }
+
+    private fun buildRankingSelectActionRow(
+        sessionId: String,
+        summaries: List<FFlogRankingSummary>,
+        selectedIndex: Int
+    ): ActionRowBuilder = ActionRowBuilder().apply {
+        stringSelect("$FFLOG_RANKING_SELECT_PREFIX:$sessionId") {
+            placeholder = "직업을 선택하세요 (기본: 올스타 점수 최고)"
+            summaries.forEachIndexed { index, summary ->
+                option(
+                    summary.job ?: "Unknown",
+                    index.toString()
+                ) {
+                    description = "올스타 ${summary.allStarPoint ?: "N/A"}"
+                    default = index == selectedIndex
+                }
+            }
+        }
+    }
+
+    private data class RankingSelectSession(
+        val name: String,
+        val server: String,
+        val isPublic: Boolean,
+        val summaries: List<FFlogRankingSummary>
+    )
 }
