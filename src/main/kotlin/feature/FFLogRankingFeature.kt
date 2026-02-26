@@ -260,7 +260,7 @@ class FFLogFeature(
             placeholder = "직업을 선택하세요 (기본: 올스타 점수 최고)"
             summaries.forEachIndexed { index, summary ->
                 option(
-                    summary.job ?: "Unknown",
+                    summary.toJobKoreanName(),
                     index.toString()
                 ) {
                     description = "올스타 ${summary.allStarPoint ?: "N/A"}"
