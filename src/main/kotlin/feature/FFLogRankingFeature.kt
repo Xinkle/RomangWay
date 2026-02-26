@@ -112,56 +112,74 @@ class FFLogFeature(
         try {
             requireNotNull(mappedServer) { "서버 이름이 올바르지 않습니다." }
 
-            val ranking = getFFlog(name, mappedServer)
-            val specNames = FFlogRankingLogic.extractSpecNames(ranking)
-            val savageRaidZoneCandidates = getSavageRaidZoneCandidates()
+            val zones = getFFlogSavageZones()
+            val currentTopSavageZone = requireNotNull(FFlogRankingLogic.findCurrentTopSavageZoneCandidate(zones)) {
+                "현재 Savage 레이드 정보를 찾을 수 없습니다."
+            }
+            val currentTierRanking = getFFlog(
+                name = name,
+                server = mappedServer,
+                zoneId = currentTopSavageZone.zoneId,
+                difficulty = currentTopSavageZone.difficultyId
+            )
+            val specNames = FFlogRankingLogic.extractSpecNames(currentTierRanking)
 
             val summaries = specNames.mapNotNull { specName ->
-                val specRanking = findLatestSavageClearRanking(
+                val specRanking = getFFlog(
                     name = name,
                     server = mappedServer,
                     spec = specName,
-                    savageRaidZoneCandidates = savageRaidZoneCandidates
+                    zoneId = currentTopSavageZone.zoneId,
+                    difficulty = currentTopSavageZone.difficultyId
                 ) ?: return@mapNotNull null
 
-                if (!FFlogRankingLogic.hasTierClearRanking(specRanking)) {
+                if (!FFlogRankingLogic.hasAnyTierProgress(specRanking)) {
                     return@mapNotNull null
                 }
 
                 FFlogRankingSummary.fromRanking(specRanking, name, server)
             }.sortedByDescending { it.allStarPointValueOrDefault() }
 
-            val displaySummaries = if (summaries.isNotEmpty()) {
-                summaries
-            } else {
-                listOf(FFlogRankingSummary.fromRanking(ranking, name, server))
-            }
-            val defaultIndex = 0
-            val selectedSummary = displaySummaries[defaultIndex]
-            val sessionId = UUID.randomUUID().toString()
-
-            rankingSelectSessions[sessionId] = RankingSelectSession(
-                name = name,
-                server = server,
-                isPublic = isExposable,
-                summaries = displaySummaries
-            )
-
             response.respond {
-                embeds = mutableListOf(
-                    buildRankingEmbed(
-                        session = rankingSelectSessions.getValue(sessionId),
-                        selectedSummary = selectedSummary
-                    )
-                )
-                if (displaySummaries.size > 1) {
-                    components = mutableListOf(
-                        buildRankingSelectActionRow(
-                            sessionId = sessionId,
-                            summaries = displaySummaries,
-                            selectedIndex = defaultIndex
+                if (summaries.isEmpty()) {
+                    embeds = mutableListOf(
+                        buildNoClearRankingEmbed(
+                            raidName = currentTopSavageZone.zoneName,
+                            name = name,
+                            server = server
                         )
                     )
+                    components?.clear()
+                } else {
+                    val defaultIndex = 0
+                    val selectedSummary = summaries[defaultIndex]
+                    val sessionId = UUID.randomUUID().toString()
+
+                    rankingSelectSessions[sessionId] = RankingSelectSession(
+                        raidName = currentTopSavageZone.zoneName,
+                        name = name,
+                        server = server,
+                        isPublic = isExposable,
+                        summaries = summaries
+                    )
+
+                    embeds = mutableListOf(
+                        buildRankingEmbed(
+                            session = rankingSelectSessions.getValue(sessionId),
+                            selectedSummary = selectedSummary
+                        )
+                    )
+                    if (summaries.size > 1) {
+                        components = mutableListOf(
+                            buildRankingSelectActionRow(
+                                sessionId = sessionId,
+                                summaries = summaries,
+                                selectedIndex = defaultIndex
+                            )
+                        )
+                    } else {
+                        components?.clear()
+                    }
                 }
                 content = ""
             }
@@ -174,43 +192,9 @@ class FFLogFeature(
         }
     }
 
-    private suspend fun findLatestSavageClearRanking(
-        name: String,
-        server: String,
-        spec: String,
-        savageRaidZoneCandidates: List<SavageRaidZoneCandidate>
-    ): FFlogRanking? {
-        val latestRanking = getFFlog(name = name, server = server, spec = spec)
-        if (FFlogRankingLogic.hasTierClearRanking(latestRanking)) {
-            return latestRanking
-        }
-
-        val currentZoneId = FFlogRankingLogic.getZoneId(latestRanking)
-
-        for (zone in savageRaidZoneCandidates) {
-            if (zone.zoneId == currentZoneId) continue
-
-            val ranking = getFFlog(
-                name = name,
-                server = server,
-                spec = spec,
-                zoneId = zone.zoneId,
-                difficulty = zone.difficultyId
-            )
-
-            if (FFlogRankingLogic.hasTierClearRanking(ranking)) {
-                return ranking
-            }
-        }
-
-        return null
-    }
-
-    private suspend fun getSavageRaidZoneCandidates(): List<SavageRaidZoneCandidate> {
+    private suspend fun getFFlogSavageZones(): FFlogZones {
         val result = fflogClient.executeQuery(GetFFlogSavageZones())
-        val zones: FFlogZones = json.decodeFromString(result)
-
-        return FFlogRankingLogic.toSavageRaidZoneCandidates(zones)
+        return json.decodeFromString(result)
     }
 
     private suspend fun getFFlog(
@@ -242,12 +226,26 @@ class FFLogFeature(
         session: RankingSelectSession,
         selectedSummary: FFlogRankingSummary
     ): EmbedBuilder = EmbedBuilder().apply {
-        title = "프프로그 조회 결과"
+        title = session.raidName
         description = """
             이름: ${session.name}
             서버: ${session.server}
 
             ${selectedSummary.toDetailDescriptionWithoutIdentity()}
+        """.trimIndent()
+    }
+
+    private fun buildNoClearRankingEmbed(
+        raidName: String,
+        name: String,
+        server: String
+    ): EmbedBuilder = EmbedBuilder().apply {
+        title = raidName
+        description = """
+            이름: $name
+            서버: $server
+
+            클리어 기록 없음
         """.trimIndent()
     }
 
@@ -271,6 +269,7 @@ class FFLogFeature(
     }
 
     private data class RankingSelectSession(
+        val raidName: String,
         val name: String,
         val server: String,
         val isPublic: Boolean,

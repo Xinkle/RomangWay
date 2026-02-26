@@ -29,6 +29,16 @@ class FFlogRankingLogicTest {
     }
 
     @Test
+    fun `최종 보스 미클리어여도 층 진행 기록이 있으면 현재 티어 진행도로 판정한다`() {
+        val partialProgress = createRankingWithKills(listOf(3, 1, 0, 0, 0))
+        val noProgress = createRankingWithKills(listOf(0, 0, 0, 0, 0))
+
+        assertTrue(FFlogRankingLogic.hasAnyTierProgress(partialProgress))
+        assertFalse(FFlogRankingLogic.hasAnyTierProgress(noProgress))
+        assertFalse(FFlogRankingLogic.hasTierClearRanking(partialProgress))
+    }
+
+    @Test
     fun `allStars에서 직업 목록을 중복 없이 추출한다`() {
         val ranking = parseResource<FFlogRanking>("fflogs/zone_rankings_response_with_unknown_and_missing_fields.json")
 
@@ -36,9 +46,11 @@ class FFlogRankingLogicTest {
     }
 
     private fun createRankingWithFinalKill(finalKill: Int): FFlogRanking {
-        val rankings = listOf(
-            1, 1, 1, 1, finalKill
-        ).mapIndexed { idx, kills ->
+        return createRankingWithKills(listOf(1, 1, 1, 1, finalKill))
+    }
+
+    private fun createRankingWithKills(killsPerEncounter: List<Int>): FFlogRanking {
+        val rankings = killsPerEncounter.mapIndexed { idx, kills ->
             FFlogRanking.Data.CharacterData.Character.ZoneRankings.Ranking(
                 allStars = null,
                 bestAmount = 1.0,
