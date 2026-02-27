@@ -2,6 +2,8 @@ package feature
 
 import dev.kord.core.behavior.interaction.response.respond
 import dev.kord.core.entity.interaction.ChatInputCommandInteraction
+import feature.eorzea.EorzeaArmorSlot
+import feature.eorzea.EorzeaCollectionGlamourClient
 import feature.tar.TarItemSearchClient
 import feature.tar.TarItemSearchResult
 import feature.tar.toDiscordMessage
@@ -13,6 +15,7 @@ private const val ARGUMENT_ITEM_NAME = "아이템이름"
 
 class GlamourSearchFeature : CoroutineScope, ChatInputCommandInteractionListener {
     private val tarItemSearchClient = TarItemSearchClient()
+    private val eorzeaCollectionGlamourClient = EorzeaCollectionGlamourClient()
 
     override val coroutineContext: CoroutineContext
         get() = SupervisorJob()
@@ -39,10 +42,26 @@ class GlamourSearchFeature : CoroutineScope, ChatInputCommandInteractionListener
             }
 
             is TarItemSearchResult.Matched -> response.respond {
-                files.add(tarResult.result.toNamedFile())
-                content = tarResult.result.englishName
+                val englishName = tarResult.result.englishName
                     .takeIf { it.isNotBlank() }
-                    ?: "영문 아이템 이름 확인 불가"
+                    ?: run {
+                        content = "영문 아이템 이름 확인 불가"
+                        return@respond
+                    }
+
+                val slot = EorzeaArmorSlot.fromTarCategory(tarResult.result.itemCategoryKorean)
+                    ?: run {
+                        content = "외형검색은 머리/몸통/손/다리/발 방어구만 지원합니다. (현재: ${tarResult.result.itemCategoryKorean ?: "미확인"})"
+                        return@respond
+                    }
+
+                val links = eorzeaCollectionGlamourClient.findTopGlamourImageLinks(slot, englishName, limit = 8)
+
+                content = buildString {
+                    appendLine("아이템: $englishName")
+                    appendLine()
+                    append(links.joinToString("\n"))
+                }
             }
         }
     }
