@@ -61,7 +61,7 @@ Unraid에서는 예를 들어 아래 경로에 파일을 두고 마운트합니�
 - `DISCORD_BOT_TOKEN`
 - `FFLOGS_CLIENT_ID`
 - `FFLOGS_CLIENT_SECRET`
-- `CHROMEDRIVER` (예: `http://100.87.250.109:3001/webdriver`)
+- `CHROMEDRIVER` (예: `http://100.87.250.109:3001` 또는 `ws://100.87.250.109:3001`)
 - `DATABASE` (예: `mariadb:3306/romangway`)
 - `DB_ID`
 - `DB_PW`
@@ -70,6 +70,6 @@ Unraid에서는 예를 들어 아래 경로에 파일을 두고 마운트합니�
 ## 4) 주의사항
 
 - 이 앱은 **MariaDB**에 연결하므로 DB 컨테이너/외부 DB가 먼저 준비되어 있어야 합니다.
-- `chromedriver`는 원격 Selenium/ChromeDriver URL을 사용하므로, 해당 주소에서 접근 가능해야 합니다.
+- `chromedriver`는 Playwright가 연결할 원격 브라우저 엔드포인트(CDP/WS)로 사용되며, 브라우저 서버에서 접근 가능해야 합니다.
+- 기존 Selenium 경로(`.../webdriver`, `.../wd/hub`)를 사용 중이면 자동으로 접미사를 제거해 연결을 시도합니다.
 - Unraid Docker 탭은 보통 “이미지 실행” 중심이므로, **이미지는 미리 빌드/푸시**해서 사용하는 흐름이 가장 안정적입니다.
-
