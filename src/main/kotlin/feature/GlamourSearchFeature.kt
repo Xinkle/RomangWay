@@ -2,6 +2,9 @@ package feature
 
 import dev.kord.core.behavior.interaction.response.respond
 import dev.kord.core.entity.interaction.ChatInputCommandInteraction
+import feature.tar.TarItemSearchClient
+import feature.tar.TarItemSearchResult
+import feature.tar.toDiscordMessage
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
 import kotlin.coroutines.CoroutineContext
@@ -9,6 +12,8 @@ import kotlin.coroutines.CoroutineContext
 private const val ARGUMENT_ITEM_NAME = "아이템이름"
 
 class GlamourSearchFeature : CoroutineScope, ChatInputCommandInteractionListener {
+    private val tarItemSearchClient = TarItemSearchClient()
+
     override val coroutineContext: CoroutineContext
         get() = SupervisorJob()
 
@@ -28,9 +33,15 @@ class GlamourSearchFeature : CoroutineScope, ChatInputCommandInteractionListener
         val response = interaction.deferPublicResponse()
         val itemName = command.strings[ARGUMENT_ITEM_NAME]!!
 
-        response.respond {
-            content = "외형검색 기능은 준비 중입니다. (입력값: $itemName)"
+        when (val tarResult = tarItemSearchClient.searchAndCapture(itemName)) {
+            is TarItemSearchResult.NotMatched -> response.respond {
+                content = tarResult.toDiscordMessage()
+            }
+
+            is TarItemSearchResult.Matched -> response.respond {
+                files.add(tarResult.result.toNamedFile())
+                content = tarResult.result.itemIdFromPageLink?.let { "아이템 ID: $it" } ?: "ItemID 확인 불가"
+            }
         }
     }
 }
-

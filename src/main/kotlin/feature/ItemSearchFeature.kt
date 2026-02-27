@@ -1,30 +1,24 @@
 package feature
 
-import Prop
 import database.ItemTableDao
 import dev.kord.core.behavior.interaction.response.respond
 import dev.kord.core.entity.interaction.ChatInputCommandInteraction
-import dev.kord.rest.NamedFile
+import feature.tar.TarItemSearchClient
+import feature.tar.TarItemSearchResult
+import feature.tar.toDiscordMessage
 import feature.universalis.JsonItemFinder
 import feature.universalis.UniversalisClient
 import feature.universalis.UniversalisWorlds
-import io.ktor.client.request.forms.*
-import io.ktor.utils.io.jvm.javaio.*
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
 import org.jetbrains.exposed.sql.transactions.transaction
-import org.openqa.selenium.By
-import org.openqa.selenium.Dimension
-import org.openqa.selenium.OutputType
-import org.openqa.selenium.WebDriver
-import org.openqa.selenium.chrome.ChromeOptions
-import org.openqa.selenium.remote.RemoteWebDriver
-import java.net.URL
 import kotlin.coroutines.CoroutineContext
 
 private const val ARGUMENT_ITEM_NAME = "아이템_이름"
 
 class ItemSearchFeature : CoroutineScope, ChatInputCommandInteractionListener {
+    private val tarItemSearchClient = TarItemSearchClient()
+
     override val coroutineContext: CoroutineContext
         get() = SupervisorJob()
 
@@ -44,65 +38,20 @@ class ItemSearchFeature : CoroutineScope, ChatInputCommandInteractionListener {
         val response = interaction.deferPublicResponse()
 
         val itemName = command.strings[ARGUMENT_ITEM_NAME]!!
-        val url = "https://ff14.tar.to/item/list?keyword=$itemName"
-
-        val driver: WebDriver = RemoteWebDriver(
-            URL(Prop.getChromeDriver()),
-            ChromeOptions().addArguments(
-                "--headless",
-                "--no-sandbox",
-                "--disable-dev-shm-usage",
-                "--force-device-scale-factor=1.5"
-            )
-        ).apply {
-            manage().window().size = Dimension(835, 1080)
-        }
-
-        driver.get(url)
-
-        val itemCandidates = driver.findElement(
-            By.className("results")
-        ).findElements(
-            By.tagName("a")
-        )
-
-        val itemPageLink = itemCandidates.firstOrNull {
-            it.text.replace(" ", "") == itemName.replace(" ", "")
-        }?.getAttribute("href") ?: run {
-            val itemCandidatesNames = itemCandidates.take(5).map { it.text }
-
-            if (itemCandidatesNames.isEmpty()) {
-                response.respond {
-                    content = "찾으시는 아이템이 없어요..."
-                }
-            } else {
-                response.respond {
-                    content = "다음의 아이템을 찾고 계신가요? $itemCandidatesNames"
-                }
-            }
-
+        val tarResult = tarItemSearchClient.searchAndCapture(itemName)
+        if (tarResult is TarItemSearchResult.NotMatched) {
+            response.respond { content = tarResult.toDiscordMessage() }
             return
         }
+        tarResult as TarItemSearchResult.Matched
 
-        val itemIdFromSearchResult = extractItemIdFromItemPageLink(itemPageLink)
-
-        driver.get(itemPageLink)
-
-        val srcFile = driver.findElement(
-            By.id("contents")
-        ).getScreenshotAs(
-            OutputType.FILE
-        )
-
-        val engName: String = driver.findElement(
-            By.cssSelector("#item-name-lang > span:nth-child(1)")
-        ).text
-
-        val file = NamedFile("$itemName.jpg", ChannelProvider { srcFile.inputStream().toByteReadChannel() })
+        val file = tarResult.result.toNamedFile()
 
         // Search Item Price
         val itemId: Int? = ItemTableDao.getItemIdByName(itemName) ?: run {
-            (itemIdFromSearchResult ?: JsonItemFinder.findItemIdByEnField(engName))?.also { resolvedItemId ->
+            (tarResult.result.itemIdFromPageLink
+                ?: tarResult.result.englishName.takeIf { it.isNotBlank() }?.let(JsonItemFinder::findItemIdByEnField))
+                ?.also { resolvedItemId ->
                 transaction {
                     ItemTableDao.insertOrReplaceItem(itemName, resolvedItemId)
                 }
@@ -123,21 +72,6 @@ class ItemSearchFeature : CoroutineScope, ChatInputCommandInteractionListener {
         response.respond {
             files.add(file)
             content = itemPrices
-        }
-
-        driver.quit()
-    }
-
-    private fun extractItemIdFromItemPageLink(itemPageLink: String): Int? {
-        val patterns = listOf(
-            """/db/item/(\d+)""".toRegex(),
-            """/item/(\d+)""".toRegex(),
-            """[?&]id=(\d+)""".toRegex(),
-            """/(\d+)(?:/)?$""".toRegex()
-        )
-
-        return patterns.firstNotNullOfOrNull { regex ->
-            regex.find(itemPageLink)?.groupValues?.getOrNull(1)?.toIntOrNull()
         }
     }
 }
