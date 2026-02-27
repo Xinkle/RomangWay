@@ -1,14 +1,14 @@
 package feature.tar
 
+import com.microsoft.playwright.Locator
 import dev.kord.rest.NamedFile
-import feature.webdriver.SeleniumDriverFactory
+import feature.webdriver.PlaywrightBrowserFactory
 import io.ktor.client.request.forms.ChannelProvider
 import io.ktor.utils.io.jvm.javaio.toByteReadChannel
-import org.openqa.selenium.By
-import org.openqa.selenium.OutputType
 import java.io.File
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
+import kotlin.io.path.createTempFile
 
 data class TarItemMatchedResult(
     val itemName: String,
@@ -40,39 +40,38 @@ class TarItemSearchClient {
         val encodedItemName = URLEncoder.encode(itemName, StandardCharsets.UTF_8)
         val listUrl = "https://ff14.tar.to/item/list?keyword=$encodedItemName"
 
-        val driver = SeleniumDriverFactory.create()
-        try {
-            driver.get(listUrl)
+        PlaywrightBrowserFactory.create().use { session ->
+            val page = session.page
+            page.navigate(listUrl)
 
-            val itemCandidates = driver
-                .findElements(By.className("results"))
-                .firstOrNull()
-                ?.findElements(By.tagName("a"))
-                .orEmpty()
+            val itemCandidates = page.locator(".results a")
+            val itemCandidateCount = itemCandidates.count()
+            val candidateLinks = (0 until itemCandidateCount).map { index ->
+                val candidate = itemCandidates.nth(index)
+                CandidateLink(
+                    text = candidate.innerText().orEmpty(),
+                    href = candidate.getAttribute("href").orEmpty()
+                )
+            }
 
-            val itemPageLink = itemCandidates.firstOrNull {
+            val itemPageLink = candidateLinks.firstOrNull {
                 it.text.replace(" ", "") == itemName.replace(" ", "")
-            }?.getAttribute("href") ?: run {
+            }?.href?.takeIf { it.isNotBlank() } ?: run {
                 return TarItemSearchResult.NotMatched(
-                    candidateNames = itemCandidates.take(5).map { it.text }
+                    candidateNames = candidateLinks.take(5).map { it.text }
                 )
             }
 
             val itemIdFromSearchResult = extractItemIdFromItemPageLink(itemPageLink)
+            page.navigate(itemPageLink)
 
-            driver.get(itemPageLink)
-
-            val screenshotFile = driver.findElement(By.id("contents")).getScreenshotAs(OutputType.FILE)
-            val itemCategoryKorean = driver
-                .findElements(By.id("item-category"))
-                .firstOrNull()
-                ?.text
+            val screenshotFile = captureContentsScreenshot(page.locator("#contents"))
+            val itemCategoryKorean = page.locator("#item-category")
+                .firstOrNullText()
                 ?.trim()
                 ?.takeIf { it.isNotBlank() }
-            val englishName = driver
-                .findElements(By.cssSelector("#item-name-lang > span:nth-child(1)"))
-                .firstOrNull()
-                ?.text
+            val englishName = page.locator("#item-name-lang > span:nth-child(1)")
+                .firstOrNullText()
                 .orEmpty()
 
             return TarItemSearchResult.Matched(
@@ -85,9 +84,15 @@ class TarItemSearchClient {
                     screenshotFile = screenshotFile
                 )
             )
-        } finally {
-            driver.quit()
         }
+    }
+
+    private fun captureContentsScreenshot(contentsLocator: Locator): File {
+        val tempPath = createTempFile(prefix = "tar-item-", suffix = ".jpg")
+        contentsLocator.screenshot(
+            Locator.ScreenshotOptions().setPath(tempPath)
+        )
+        return tempPath.toFile()
     }
 
     private fun extractItemIdFromItemPageLink(itemPageLink: String): Int? {
@@ -101,5 +106,15 @@ class TarItemSearchClient {
         return patterns.firstNotNullOfOrNull { regex ->
             regex.find(itemPageLink)?.groupValues?.getOrNull(1)?.toIntOrNull()
         }
+    }
+
+    private data class CandidateLink(
+        val text: String,
+        val href: String
+    )
+
+    private fun Locator.firstOrNullText(): String? {
+        if (count() <= 0) return null
+        return nth(0).textContent()
     }
 }
