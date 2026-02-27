@@ -6,6 +6,7 @@ import feature.webdriver.PlaywrightBrowserFactory
 import io.ktor.client.request.forms.ChannelProvider
 import io.ktor.utils.io.jvm.javaio.toByteReadChannel
 import java.io.File
+import java.net.URI
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
 import kotlin.io.path.createTempFile
@@ -50,7 +51,7 @@ class TarItemSearchClient {
                 val candidate = itemCandidates.nth(index)
                 CandidateLink(
                     text = candidate.innerText().orEmpty(),
-                    href = candidate.getAttribute("href").orEmpty()
+                    href = resolveItemPageLink(candidate.getAttribute("href").orEmpty())
                 )
             }
 
@@ -110,11 +111,29 @@ class TarItemSearchClient {
 
     private data class CandidateLink(
         val text: String,
-        val href: String
+        val href: String?
     )
 
     private fun Locator.firstOrNullText(): String? {
         if (count() <= 0) return null
         return nth(0).textContent()
+    }
+
+    companion object {
+        private const val TAR_BASE_URL = "https://ff14.tar.to"
+
+        internal fun resolveItemPageLink(rawHref: String): String? {
+            val trimmed = rawHref.trim()
+            if (trimmed.isEmpty()) return null
+
+            return runCatching {
+                val parsed = URI(trimmed)
+                if (parsed.isAbsolute) {
+                    parsed.toString()
+                } else {
+                    URI(TAR_BASE_URL).resolve(parsed).toString()
+                }
+            }.getOrNull()
+        }
     }
 }
