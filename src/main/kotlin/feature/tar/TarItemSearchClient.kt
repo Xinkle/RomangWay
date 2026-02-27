@@ -19,6 +19,8 @@ data class TarItemMatchedResult(
     val itemName: String,
     val itemPageLink: String,
     val itemIdFromPageLink: Int?,
+    val itemTypeKorean: String?,
+    val itemTypeEnglish: String?,
     val englishName: String,
     val screenshotFile: File
 ) {
@@ -67,6 +69,13 @@ class TarItemSearchClient {
             driver.get(itemPageLink)
 
             val screenshotFile = driver.findElement(By.id("contents")).getScreenshotAs(OutputType.FILE)
+            val itemTypeKorean = driver
+                .findElements(By.id("item-category"))
+                .firstOrNull()
+                ?.text
+                ?.trim()
+                ?.takeIf { it.isNotBlank() }
+
             val englishName = driver
                 .findElements(By.cssSelector("#item-name-lang > span:nth-child(1)"))
                 .firstOrNull()
@@ -78,6 +87,8 @@ class TarItemSearchClient {
                     itemName = itemName,
                     itemPageLink = itemPageLink,
                     itemIdFromPageLink = itemIdFromSearchResult,
+                    itemTypeKorean = itemTypeKorean,
+                    itemTypeEnglish = TarItemTypeMapper.toEnglish(itemTypeKorean),
                     englishName = englishName,
                     screenshotFile = screenshotFile
                 )
@@ -112,4 +123,20 @@ class TarItemSearchClient {
             regex.find(itemPageLink)?.groupValues?.getOrNull(1)?.toIntOrNull()
         }
     }
+}
+
+object TarItemTypeMapper {
+    private val koreanToEnglish = mapOf(
+        "머리 방어구" to "head",
+        "몸통 방어구" to "body",
+        "손 방어구" to "hands",
+        "다리 방어구" to "legs",
+        "발 방어구" to "feet"
+    )
+
+    fun toEnglish(koreanItemType: String?): String? =
+        koreanItemType
+            ?.trim()
+            ?.takeIf { it.isNotBlank() }
+            ?.let(koreanToEnglish::get)
 }
