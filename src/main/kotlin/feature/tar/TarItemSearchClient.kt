@@ -1,24 +1,20 @@
 package feature.tar
 
-import Prop
 import dev.kord.rest.NamedFile
+import feature.webdriver.SeleniumDriverFactory
 import io.ktor.client.request.forms.ChannelProvider
 import io.ktor.utils.io.jvm.javaio.toByteReadChannel
 import org.openqa.selenium.By
-import org.openqa.selenium.Dimension
 import org.openqa.selenium.OutputType
-import org.openqa.selenium.WebDriver
-import org.openqa.selenium.chrome.ChromeOptions
-import org.openqa.selenium.remote.RemoteWebDriver
 import java.io.File
 import java.net.URLEncoder
-import java.net.URL
 import java.nio.charset.StandardCharsets
 
 data class TarItemMatchedResult(
     val itemName: String,
     val itemPageLink: String,
     val itemIdFromPageLink: Int?,
+    val itemCategoryKorean: String?,
     val englishName: String,
     val screenshotFile: File
 ) {
@@ -44,7 +40,7 @@ class TarItemSearchClient {
         val encodedItemName = URLEncoder.encode(itemName, StandardCharsets.UTF_8)
         val listUrl = "https://ff14.tar.to/item/list?keyword=$encodedItemName"
 
-        val driver = createDriver()
+        val driver = SeleniumDriverFactory.create()
         try {
             driver.get(listUrl)
 
@@ -67,6 +63,12 @@ class TarItemSearchClient {
             driver.get(itemPageLink)
 
             val screenshotFile = driver.findElement(By.id("contents")).getScreenshotAs(OutputType.FILE)
+            val itemCategoryKorean = driver
+                .findElements(By.id("item-category"))
+                .firstOrNull()
+                ?.text
+                ?.trim()
+                ?.takeIf { it.isNotBlank() }
             val englishName = driver
                 .findElements(By.cssSelector("#item-name-lang > span:nth-child(1)"))
                 .firstOrNull()
@@ -78,6 +80,7 @@ class TarItemSearchClient {
                     itemName = itemName,
                     itemPageLink = itemPageLink,
                     itemIdFromPageLink = itemIdFromSearchResult,
+                    itemCategoryKorean = itemCategoryKorean,
                     englishName = englishName,
                     screenshotFile = screenshotFile
                 )
@@ -86,19 +89,6 @@ class TarItemSearchClient {
             driver.quit()
         }
     }
-
-    private fun createDriver(): WebDriver =
-        RemoteWebDriver(
-            URL(Prop.getChromeDriver()),
-            ChromeOptions().addArguments(
-                "--headless",
-                "--no-sandbox",
-                "--disable-dev-shm-usage",
-                "--force-device-scale-factor=1.5"
-            )
-        ).apply {
-            manage().window().size = Dimension(835, 1080)
-        }
 
     private fun extractItemIdFromItemPageLink(itemPageLink: String): Int? {
         val patterns = listOf(
