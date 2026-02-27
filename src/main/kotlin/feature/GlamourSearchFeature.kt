@@ -40,10 +40,9 @@ class GlamourSearchFeature : CoroutineScope, ChatInputCommandInteractionListener
 
             is TarItemSearchResult.Matched -> response.respond {
                 files.add(tarResult.result.toNamedFile())
-                content = tarResult.result.itemIdFromPageLink?.let { itemId ->
-                    val itemType = tarResult.result.itemTypeKorean ?: "분류 불명"
-                    "$itemId($itemType)"
-                } ?: "ItemID 확인 불가"
+                content = tarResult.result.englishName
+                    .takeIf { it.isNotBlank() }
+                    ?: "영문 아이템 이름 확인 불가"
             }
         }
     }
