@@ -1,6 +1,8 @@
 package feature.tar
 
 import com.microsoft.playwright.Locator
+import com.microsoft.playwright.Page
+import com.microsoft.playwright.options.WaitUntilState
 import dev.kord.rest.NamedFile
 import feature.webdriver.PlaywrightBrowserFactory
 import io.ktor.client.request.forms.ChannelProvider
@@ -13,6 +15,9 @@ import java.nio.charset.StandardCharsets
 import kotlin.io.path.createTempFile
 
 private val logger = LoggerFactory.getLogger(TarItemSearchClient::class.java)
+private const val TAR_NAVIGATION_TIMEOUT_MS = 60_000.0
+private const val TAR_NAVIGATION_MAX_ATTEMPTS = 2
+private const val TAR_NAVIGATION_RETRY_DELAY_MS = 500.0
 
 data class TarItemMatchedResult(
     val itemName: String,
@@ -52,7 +57,7 @@ class TarItemSearchClient {
                 val page = session.page
                 val listNavigateStartedAt = System.nanoTime()
                 logger.info("[TAR] 목록 페이지 접속 시도")
-                page.navigate(listUrl)
+                navigateWithRetry(page, listUrl, "목록")
                 logger.info(
                     "[TAR] 목록 페이지 접속 완료: elapsedMs={}",
                     elapsedMs(listNavigateStartedAt)
@@ -88,7 +93,7 @@ class TarItemSearchClient {
                 logger.info("[TAR] 항목 선택 완료: pageLink={}, itemId={}", itemPageLink, itemIdFromSearchResult)
 
                 val itemNavigateStartedAt = System.nanoTime()
-                page.navigate(itemPageLink)
+                navigateWithRetry(page, itemPageLink, "상세")
                 logger.info(
                     "[TAR] 아이템 상세 페이지 접속 완료: elapsedMs={}",
                     elapsedMs(itemNavigateStartedAt)
@@ -138,6 +143,43 @@ class TarItemSearchClient {
             )
             throw e
         }
+    }
+
+    private fun navigateWithRetry(page: Page, url: String, stepName: String) {
+        var lastError: Throwable? = null
+
+        repeat(TAR_NAVIGATION_MAX_ATTEMPTS) { attempt ->
+            val attemptNo = attempt + 1
+            val succeeded = runCatching {
+                page.navigate(
+                    url,
+                    Page.NavigateOptions()
+                        .setWaitUntil(WaitUntilState.DOMCONTENTLOADED)
+                        .setTimeout(TAR_NAVIGATION_TIMEOUT_MS)
+                )
+            }.onFailure { error ->
+                lastError = error
+                logger.warn(
+                    "[TAR] {} 페이지 접속 실패: attempt={}/{}, url={}, message={}",
+                    stepName,
+                    attemptNo,
+                    TAR_NAVIGATION_MAX_ATTEMPTS,
+                    url,
+                    error.message
+                )
+            }.isSuccess
+
+            if (succeeded) return
+
+            if (attemptNo < TAR_NAVIGATION_MAX_ATTEMPTS) {
+                page.waitForTimeout(TAR_NAVIGATION_RETRY_DELAY_MS)
+            }
+        }
+
+        throw IllegalStateException(
+            "TAR $stepName 페이지 접속에 실패했습니다. url=$url",
+            lastError
+        )
     }
 
     private fun captureContentsScreenshot(contentsLocator: Locator): File {
