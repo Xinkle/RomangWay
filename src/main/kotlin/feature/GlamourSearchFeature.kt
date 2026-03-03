@@ -1,6 +1,7 @@
 package feature
 
 import dev.kord.core.behavior.interaction.response.respond
+import dev.kord.core.behavior.edit
 import dev.kord.core.entity.interaction.ChatInputCommandInteraction
 import dev.kord.rest.NamedFile
 import dev.kord.rest.builder.component.ActionRowBuilder
@@ -53,8 +54,17 @@ class GlamourSearchFeature : CoroutineScope, ChatInputCommandInteractionListener
     override suspend fun onGuildChatInputCommand(interaction: ChatInputCommandInteraction) {
         val command = interaction.command
         val response = interaction.deferPublicResponse()
+        val initialized = runCatching {
+            response.respond {
+                content = "진행 중: 외형검색을 준비하고 있습니다."
+            }
+        }.isSuccess
+        if (!initialized) {
+            updateDeferredProgress(interaction, "외형검색을 준비하고 있습니다.")
+        }
         val itemName = command.strings[ARGUMENT_ITEM_NAME]!!
 
+        updateDeferredProgress(interaction, "TAR에서 아이템 정보를 조회 중입니다.")
         val tarResult = runWithCommandTimeout("TAR 아이템 검색", TAR_ITEM_SEARCH_TIMEOUT_MS) {
             withContext(Dispatchers.IO) {
                 tarItemSearchClient.searchAndCapture(itemName)
@@ -62,26 +72,37 @@ class GlamourSearchFeature : CoroutineScope, ChatInputCommandInteractionListener
         }
 
         when (tarResult) {
-            is TarItemSearchResult.NotMatched -> response.respond {
-                content = tarResult.toDiscordMessage()
+            is TarItemSearchResult.NotMatched -> {
+                if (!updateDeferredMessage(interaction, tarResult.toDiscordMessage())) {
+                    response.respond { content = tarResult.toDiscordMessage() }
+                }
             }
 
             is TarItemSearchResult.Matched -> {
                 val englishName = tarResult.result.englishName
                     .takeIf { it.isNotBlank() }
                     ?: run {
-                        response.respond { content = "영문 아이템 이름 확인 불가" }
+                        if (!updateDeferredMessage(interaction, "영문 아이템 이름 확인 불가")) {
+                            response.respond { content = "영문 아이템 이름 확인 불가" }
+                        }
                         return
                     }
 
                 val slot = EorzeaArmorSlot.fromTarCategory(tarResult.result.itemCategoryKorean)
                     ?: run {
-                        response.respond {
-                            content = "외형검색은 머리/몸통/손/다리/발 방어구만 지원합니다. (현재: ${tarResult.result.itemCategoryKorean ?: "미확인"})"
+                        if (!updateDeferredMessage(
+                                interaction,
+                                "외형검색은 머리/몸통/손/다리/발 방어구만 지원합니다. (현재: ${tarResult.result.itemCategoryKorean ?: "미확인"})"
+                            )
+                        ) {
+                            response.respond {
+                                content = "외형검색은 머리/몸통/손/다리/발 방어구만 지원합니다. (현재: ${tarResult.result.itemCategoryKorean ?: "미확인"})"
+                            }
                         }
                         return
                     }
 
+                updateDeferredProgress(interaction, "Eorzea Collection 결과를 조회 중입니다.")
                 val glamours = runWithCommandTimeout("외형 검색", EORZEA_SEARCH_TIMEOUT_MS) {
                     withContext(Dispatchers.IO) {
                         eorzeaCollectionGlamourClient.findTopGlamours(
@@ -91,19 +112,33 @@ class GlamourSearchFeature : CoroutineScope, ChatInputCommandInteractionListener
                         )
                     }
                 }
+                updateDeferredProgress(interaction, "외형 이미지를 다운로드 중입니다.")
                 val attachments = runWithCommandTimeout("외형 이미지 다운로드", IMAGE_DOWNLOAD_TIMEOUT_MS) {
                     withContext(Dispatchers.IO) {
                         downloadGlamourImages(glamours)
                     }
                 }
+                updateDeferredProgress(interaction, "결과를 디스코드로 전송 중입니다.")
 
                 try {
-                    response.respond {
-                        content = "아이템: $englishName"
-                        attachments.forEach { file ->
-                            files.add(file.toNamedFile())
+                    val edited = runCatching {
+                        interaction.getOriginalInteractionResponseOrNull()?.edit {
+                            content = "아이템: $englishName"
+                            attachments.forEach { file ->
+                                files.add(file.toNamedFile())
+                            }
+                            components = buildGlamourLinkButtons(attachments).toMutableList()
+                        } != null
+                    }.getOrDefault(false)
+
+                    if (!edited) {
+                        response.respond {
+                            content = "아이템: $englishName"
+                            attachments.forEach { file ->
+                                files.add(file.toNamedFile())
+                            }
+                            components = buildGlamourLinkButtons(attachments).toMutableList()
                         }
-                        components = buildGlamourLinkButtons(attachments).toMutableList()
                     }
                 } finally {
                     attachments.forEach { it.deleteQuietly() }

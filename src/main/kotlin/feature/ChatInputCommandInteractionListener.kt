@@ -121,6 +121,26 @@ interface ChatInputCommandInteractionListener {
         }
     }
 
+    suspend fun updateDeferredProgress(
+        interaction: ChatInputCommandInteraction,
+        stepMessage: String
+    ): Boolean = updateDeferredMessage(interaction, "진행 중: $stepMessage")
+
+    suspend fun updateDeferredMessage(
+        interaction: ChatInputCommandInteraction,
+        message: String
+    ): Boolean {
+        return runCatching {
+            val originalResponse = interaction.getOriginalInteractionResponseOrNull() ?: return false
+            originalResponse.edit {
+                content = message
+            }
+            true
+        }.onFailure { progressError ->
+            logger.warn("진행상황 업데이트 실패: command={}", interaction.command.data.name.value, progressError)
+        }.getOrDefault(false)
+    }
+
     suspend fun registerCommand(kord: Kord, existCommands: List<DiscordApplicationCommand>) {
         val isExist = existCommands.find { it.name == command } != null
 
