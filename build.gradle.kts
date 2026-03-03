@@ -96,7 +96,7 @@ dependencies {
     implementation("com.expediagroup:graphql-kotlin-ktor-client:6.3.0")
     implementation("com.microsoft.playwright:playwright:1.44.0")
     implementation("org.mariadb.jdbc:mariadb-java-client:3.4.1")
-    implementation("org.slf4j:slf4j-simple:2.0.3")
+    implementation("ch.qos.logback:logback-classic:1.5.18")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.9.0")
 }
 
