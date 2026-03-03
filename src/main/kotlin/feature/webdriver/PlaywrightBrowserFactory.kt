@@ -3,7 +3,6 @@ package feature.webdriver
 import Prop
 import com.microsoft.playwright.Browser
 import com.microsoft.playwright.BrowserContext
-import com.microsoft.playwright.BrowserType
 import com.microsoft.playwright.Page
 import com.microsoft.playwright.Playwright
 
@@ -22,7 +21,7 @@ class PlaywrightSession(
 
 object PlaywrightBrowserFactory {
     fun create(width: Int = 835, height: Int = 1080): PlaywrightSession {
-        val endpoint = normalizeEndpoint(Prop.getChromeDriver())
+        val endpoint = normalizeEndpoint(Prop.getChromeCdp())
         val playwright = Playwright.create(
             Playwright.CreateOptions().setEnv(
                 HashMap(System.getenv()).apply {
@@ -30,7 +29,7 @@ object PlaywrightBrowserFactory {
                 }
             )
         )
-        val browser = connect(playwright.chromium(), endpoint)
+        val browser = connectOverCdp(playwright, endpoint)
         val context = browser.newContext(
             Browser.NewContextOptions().setViewportSize(width, height)
         )
@@ -44,25 +43,18 @@ object PlaywrightBrowserFactory {
         )
     }
 
-    private fun connect(browserType: BrowserType, endpoint: String): Browser = runCatching {
-        when {
-            endpoint.startsWith("ws://") || endpoint.startsWith("wss://") -> {
-                browserType.connect(endpoint)
-            }
-
-            else -> {
-                browserType.connectOverCDP(endpoint)
-            }
-        }
+    private fun connectOverCdp(playwright: Playwright, endpoint: String): Browser = runCatching {
+        playwright.chromium().connectOverCDP(endpoint)
     }.getOrElse { cause ->
         throw IllegalStateException(
-            "Playwright 원격 브라우저 연결에 실패했습니다. CHROMEDRIVER(엔드포인트) 값을 확인해주세요: $endpoint",
+            "Playwright CDP 연결에 실패했습니다. CHROME_CDP 값을 확인해주세요: $endpoint",
             cause
         )
     }
 
     private fun normalizeEndpoint(rawEndpoint: String): String {
         val trimmed = rawEndpoint.trim().removeSuffix("/")
+        require(trimmed.isNotBlank()) { "CHROME_CDP 값이 비어 있습니다." }
 
         return when {
             trimmed.endsWith("/webdriver") -> trimmed.removeSuffix("/webdriver")
