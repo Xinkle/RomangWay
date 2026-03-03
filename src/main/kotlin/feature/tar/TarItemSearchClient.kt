@@ -41,7 +41,7 @@ class TarItemSearchClient {
         val encodedItemName = URLEncoder.encode(itemName, StandardCharsets.UTF_8)
         val listUrl = "https://ff14.tar.to/item/list?keyword=$encodedItemName"
 
-        PlaywrightBrowserFactory.create().use { session ->
+        PlaywrightBrowserFactory.createForTar().use { session ->
             val page = session.page
             page.navigate(listUrl)
 
