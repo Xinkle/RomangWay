@@ -2,7 +2,6 @@
 set -eu
 
 CONFIG_PATH="${SECRET_PROFILE_PATH:-/config/secret_profile.properties}"
-DEFAULT_JAVA_MEMORY_OPTS="${ROMANGWAY_JAVA_MEMORY_OPTS:--Xms128m -Xmx256m -XX:MaxDirectMemorySize=96m}"
 LOG_DIR="${LOG_DIR:-/app/logs}"
 
 if [ -f "$CONFIG_PATH" ]; then
@@ -15,9 +14,11 @@ mkdir -p "$LOG_DIR"
 export LOG_DIR
 echo "[romangway] Log directory: $LOG_DIR"
 
-if [ -z "${JAVA_TOOL_OPTIONS:-}" ]; then
-  export JAVA_TOOL_OPTIONS="$DEFAULT_JAVA_MEMORY_OPTS"
-  echo "[romangway] JAVA_TOOL_OPTIONS not set. Using default: $JAVA_TOOL_OPTIONS"
+if [ -z "${JAVA_TOOL_OPTIONS:-}" ] && [ -n "${ROMANGWAY_JAVA_MEMORY_OPTS:-}" ]; then
+  export JAVA_TOOL_OPTIONS="$ROMANGWAY_JAVA_MEMORY_OPTS"
+  echo "[romangway] Applying ROMANGWAY_JAVA_MEMORY_OPTS as JAVA_TOOL_OPTIONS: $JAVA_TOOL_OPTIONS"
+elif [ -z "${JAVA_TOOL_OPTIONS:-}" ]; then
+  echo "[romangway] JAVA_TOOL_OPTIONS not set. No JVM memory limit is applied by default."
 else
   echo "[romangway] Using JAVA_TOOL_OPTIONS from environment: $JAVA_TOOL_OPTIONS"
 fi
