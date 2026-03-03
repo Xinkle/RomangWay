@@ -4,8 +4,14 @@ import com.microsoft.playwright.Locator
 import com.microsoft.playwright.Page
 import feature.webdriver.PlaywrightBrowserFactory
 
+private const val EORZEA_BASE_URL = "https://ffxiv.eorzeacollection.com"
 private const val EORZEA_GLAMOURS_URL =
     "https://ffxiv.eorzeacollection.com/glamours?filter%5BorderBy%5D=loves&filter%5BdatePeriod%5D=past-year&filter%5Bgender%5D=any&filter%5Bserver%5D=any&search=&author=&filter%5Bclass%5D=&filter%5Bstyle%5D=&filter%5Btheme%5D=&filter%5Bcolor%5D=&filter%5Bjob%5D=all&filter%5BminimumLvl%5D=1&filter%5BmaximumLvl%5D=100&filter%5BheadPiece%5D=&filter%5BbodyPiece%5D=&filter%5BhandsPiece%5D=&filter%5BlegsPiece%5D=&filter%5BfeetPiece%5D=&filter%5BweaponPiece%5D=&filter%5BoffhandPiece%5D=&filter%5BearringsPiece%5D=&filter%5BnecklacePiece%5D=&filter%5BbraceletsPiece%5D=&filter%5BringPiece%5D=&filter%5BfashionPiece%5D=&filter%5BfacePiece%5D=&page=1"
+
+data class EorzeaGlamourResult(
+    val imageUrl: String,
+    val pageUrl: String
+)
 
 enum class EorzeaArmorSlot(
     val tarCategory: String,
@@ -28,11 +34,11 @@ enum class EorzeaArmorSlot(
 
 class EorzeaCollectionGlamourClient {
 
-    fun findTopGlamourImageLinks(
+    fun findTopGlamours(
         slot: EorzeaArmorSlot,
         itemEnglishName: String,
-        limit: Int = 8
-    ): List<String> {
+        limit: Int = 6
+    ): List<EorzeaGlamourResult> {
         require(itemEnglishName.isNotBlank()) { "영문 아이템 이름이 비어 있습니다." }
 
         PlaywrightBrowserFactory.create(width = 1600, height = 1800).use { session ->
@@ -47,17 +53,17 @@ class EorzeaCollectionGlamourClient {
 
             selectDropdownOption(page, input, itemEnglishName)
             val beforeApplyUrl = page.url()
-            val beforeApplyLinks = extractImageLinks(page).take(limit)
+            val beforeApplyGlamours = extractGlamours(page).take(limit)
             clickApplyFilter(page)
 
-            waitForFilteredResults(page, beforeApplyUrl, beforeApplyLinks)
+            waitForFilteredResults(page, beforeApplyUrl, beforeApplyGlamours)
 
-            val links = extractImageLinks(page).take(limit)
-            if (links.isEmpty()) {
-                throw IllegalStateException("외형 결과 이미지 링크를 찾지 못했습니다.")
+            val glamours = extractGlamours(page).take(limit)
+            if (glamours.isEmpty()) {
+                throw IllegalStateException("외형 결과를 찾지 못했습니다.")
             }
 
-            return links
+            return glamours
         }
     }
 
@@ -119,16 +125,17 @@ class EorzeaCollectionGlamourClient {
     private fun waitForFilteredResults(
         page: Page,
         beforeApplyUrl: String,
-        beforeApplyLinks: List<String>
+        beforeApplyGlamours: List<EorzeaGlamourResult>
     ) {
         val deadlineAt = System.currentTimeMillis() + 20_000L
         while (System.currentTimeMillis() < deadlineAt) {
             page.waitForLoadState()
-            val currentLinks = extractImageLinks(page)
+            val currentGlamours = extractGlamours(page)
             val urlChanged = page.url() != beforeApplyUrl
-            val linksChanged = currentLinks.take(beforeApplyLinks.size) != beforeApplyLinks
+            val linksChanged =
+                currentGlamours.take(beforeApplyGlamours.size).map { it.imageUrl } != beforeApplyGlamours.map { it.imageUrl }
 
-            if (currentLinks.isNotEmpty() && (urlChanged || linksChanged)) {
+            if (currentGlamours.isNotEmpty() && (urlChanged || linksChanged)) {
                 return
             }
             page.waitForTimeout(250.0)
@@ -136,20 +143,47 @@ class EorzeaCollectionGlamourClient {
         throw IllegalStateException("Apply Filter 이후 결과가 갱신되지 않았습니다.")
     }
 
-    private fun extractImageLinks(page: Page): List<String> {
-        val directSrc = imageSelectors
+    private fun extractGlamours(page: Page): List<EorzeaGlamourResult> {
+        val cardBasedResults = glamourCardSelectors
             .asSequence()
             .flatMap { selector -> page.locator(selector).allVisible().asSequence() }
-            .mapNotNull { element -> element.getAttribute("src") ?: element.getAttribute("data-src") }
-            .filter { it.contains("https://glamours.eorzeacollection.com/") }
+            .mapNotNull { card ->
+                val pageUrl = card.absoluteHref()?.takeIf(::isGlamourPageUrl) ?: return@mapNotNull null
+                val image = card.locator("img").firstOrNullVisible() ?: return@mapNotNull null
+                val imageUrl =
+                    (image.getAttribute("src") ?: image.getAttribute("data-src"))?.normalizeImageUrl()
+                        ?.takeIf(::isGlamourImageUrl)
+                        ?: return@mapNotNull null
+
+                EorzeaGlamourResult(
+                    imageUrl = imageUrl,
+                    pageUrl = pageUrl
+                )
+            }
+            .distinctBy { it.pageUrl }
             .toList()
 
-        val pageSourceLinks = IMAGE_LINK_REGEX
-            .findAll(page.content())
-            .map { it.value }
-            .toList()
+        if (cardBasedResults.isNotEmpty()) {
+            return cardBasedResults
+        }
 
-        return (directSrc + pageSourceLinks).distinct()
+        return imageSelectors
+            .asSequence()
+            .flatMap { selector -> page.locator(selector).allVisible().asSequence() }
+            .mapNotNull { image ->
+                val imageUrl =
+                    (image.getAttribute("src") ?: image.getAttribute("data-src"))?.normalizeImageUrl()
+                        ?.takeIf(::isGlamourImageUrl)
+                        ?: return@mapNotNull null
+                val pageUrl = image.closestAnchorHref()?.takeIf(::isGlamourPageUrl) ?: return@mapNotNull null
+
+                EorzeaGlamourResult(
+                    imageUrl = imageUrl,
+                    pageUrl = pageUrl
+                )
+            }
+            .distinctBy { it.pageUrl }
+            .toList()
     }
 
     private fun checkCloudflareBlocked(page: Page) {
@@ -185,10 +219,37 @@ class EorzeaCollectionGlamourClient {
             "img[data-src*='https://glamours.eorzeacollection.com/']"
         )
 
-        private val IMAGE_LINK_REGEX =
-            """https://glamours\.eorzeacollection\.com/[A-Za-z0-9/\-_.]+""".toRegex()
+        private val glamourCardSelectors = listOf(
+            "a[href*='/glamour/']",
+            "a[href*='://ffxiv.eorzeacollection.com/glamour/']"
+        )
     }
 }
+
+private fun isGlamourPageUrl(url: String): Boolean {
+    val normalized = url.trim()
+    return normalized.startsWith("$EORZEA_BASE_URL/glamour/")
+}
+
+private fun isGlamourImageUrl(url: String): Boolean =
+    url.contains("https://glamours.eorzeacollection.com/")
+
+private fun String.normalizeImageUrl(): String {
+    val value = trim()
+    return when {
+        value.startsWith("//") -> "https:$value"
+        value.startsWith("/") -> "$EORZEA_BASE_URL$value"
+        else -> value
+    }
+}
+
+private fun Locator.absoluteHref(): String? = runCatching {
+    evaluate("el => el.href") as? String
+}.getOrNull()?.trim()?.takeIf { it.isNotBlank() }
+
+private fun Locator.closestAnchorHref(): String? = runCatching {
+    evaluate("el => el.closest('a')?.href") as? String
+}.getOrNull()?.trim()?.takeIf { it.isNotBlank() }
 
 private fun Locator.firstOrNullVisible(): Locator? {
     val count = count()
