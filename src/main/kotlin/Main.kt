@@ -10,36 +10,47 @@ import feature.topsimulator.TopSimulatorFeature
 import fflog.FFLogClient
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import org.slf4j.LoggerFactory
 import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.SchemaUtils
 import org.jetbrains.exposed.sql.StdOutSqlLogger
 import org.jetbrains.exposed.sql.addLogger
 import org.jetbrains.exposed.sql.transactions.transaction
 
+private val logger = LoggerFactory.getLogger("Main")
 
 suspend fun main() = withContext(Dispatchers.IO) {
+    logger.info("Romangway 애플리케이션 시작")
+
     // 데이터베이스 연결 설정 (MariaDB 사용)
+    logger.info("데이터베이스 연결 시도: jdbc:mariadb://{}", Prop.getDatabase())
     Database.connect(
         "jdbc:mariadb://${Prop.getDatabase()}",
         driver = "org.mariadb.jdbc.Driver",
         user = Prop.getDatabaseId(),
         password = Prop.getDatabasePw()
     )
+    logger.info("데이터베이스 연결 완료")
 
     // Discord 봇 인스턴스 초기화
+    logger.info("Discord Kord 인스턴스 초기화")
     val kord = Kord(Prop.getDiscordBotToken())
 
     // Kord REST API를 통해 현재 등록된 글로벌 커맨드 목록을 조회합니다.
+    logger.info("기존 글로벌 커맨드 목록 조회 시작")
     val existingCommands = try {
         kord.rest.interaction.getGlobalApplicationCommands(kord.selfId)
     } catch (e: Exception) {
-        println("커맨드 목록 조회 실패: $e")
+        logger.warn("커맨드 목록 조회 실패: {}", e.message, e)
         emptyList()
     }
+    logger.info("기존 글로벌 커맨드 목록 조회 완료: {}개", existingCommands.size)
 
     // FFLog 클라이언트 초기화 및 토큰 갱신
+    logger.info("FFLog 클라이언트 초기화 및 토큰 갱신 시작")
     val fflogClient = FFLogClient()
     fflogClient.refreshToken()
+    logger.info("FFLog 토큰 갱신 완료")
 
     // 각 기능(피처)들의 인스턴스 생성
     val fflogFeature = FFLogFeature(kord, fflogClient)
@@ -69,9 +80,11 @@ suspend fun main() = withContext(Dispatchers.IO) {
     )
 
     // 각 커맨드 기능을 등록 (이미 등록된 글로벌 커맨드 목록과 비교하여 처리)
+    logger.info("커맨드 등록 시작: {}개", commandList.size)
     commandList.forEach {
         it.registerCommand(kord, existingCommands)
     }
+    logger.info("커맨드 등록 완료")
 
     // Guild(서버) 내에서 채팅 입력 커맨드 상호작용 이벤트 리스너 등록
     kord.on<ChatInputCommandInteractionCreateEvent> {
@@ -82,19 +95,21 @@ suspend fun main() = withContext(Dispatchers.IO) {
             commandList.first { it.command == command.data.name.value }
                 .onGuildChatInputCommandSafely(interaction)
         } catch (e: Exception) {
-            e.printStackTrace()
+            logger.error("커맨드 라우팅 실패: command={}", command.data.name.value, e)
         }
     }
 
 
     // 데이터베이스 스키마 설정: 필요한 테이블 생성
+    logger.info("데이터베이스 스키마 초기화 시작")
     transaction {
         addLogger(StdOutSqlLogger)
         SchemaUtils.create(CommandTeachingTable)
         SchemaUtils.create(ItemTable)
     }
+    logger.info("데이터베이스 스키마 초기화 완료")
 
-    println("Romangway Login...")
+    logger.info("Discord 로그인 시작")
 
     // 봇 로그인: 봇이 Discord 이벤트를 수신하도록 로그인
     kord.login {

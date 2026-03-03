@@ -22,10 +22,9 @@ COPY --from=builder /tmp/app.jar /app/app.jar
 COPY docker/entrypoint.sh /entrypoint.sh
 
 RUN chmod +x /entrypoint.sh \
-    && mkdir -p /config
+    && mkdir -p /config /app/logs
 
 # Optional mount path for secret_profile.properties (Unraid appdata recommended)
 ENV SECRET_PROFILE_PATH=/config/secret_profile.properties
 
 ENTRYPOINT ["/entrypoint.sh"]
-
