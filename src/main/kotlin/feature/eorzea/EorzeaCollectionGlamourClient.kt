@@ -3,10 +3,13 @@ package feature.eorzea
 import com.microsoft.playwright.Locator
 import com.microsoft.playwright.Page
 import feature.webdriver.PlaywrightBrowserFactory
+import org.slf4j.LoggerFactory
 
 private const val EORZEA_BASE_URL = "https://ffxiv.eorzeacollection.com"
 private const val EORZEA_GLAMOURS_URL =
     "https://ffxiv.eorzeacollection.com/glamours?filter%5BorderBy%5D=loves&filter%5BdatePeriod%5D=past-year&filter%5Bgender%5D=any&filter%5Bserver%5D=any&search=&author=&filter%5Bclass%5D=&filter%5Bstyle%5D=&filter%5Btheme%5D=&filter%5Bcolor%5D=&filter%5Bjob%5D=all&filter%5BminimumLvl%5D=1&filter%5BmaximumLvl%5D=100&filter%5BheadPiece%5D=&filter%5BbodyPiece%5D=&filter%5BhandsPiece%5D=&filter%5BlegsPiece%5D=&filter%5BfeetPiece%5D=&filter%5BweaponPiece%5D=&filter%5BoffhandPiece%5D=&filter%5BearringsPiece%5D=&filter%5BnecklacePiece%5D=&filter%5BbraceletsPiece%5D=&filter%5BringPiece%5D=&filter%5BfashionPiece%5D=&filter%5BfacePiece%5D=&page=1"
+
+private val logger = LoggerFactory.getLogger(EorzeaCollectionGlamourClient::class.java)
 
 data class EorzeaGlamourResult(
     val imageUrl: String,
@@ -39,31 +42,76 @@ class EorzeaCollectionGlamourClient {
         itemEnglishName: String,
         limit: Int = 6
     ): List<EorzeaGlamourResult> {
+        val startedAt = System.nanoTime()
         require(itemEnglishName.isNotBlank()) { "영문 아이템 이름이 비어 있습니다." }
+        logger.info(
+            "[EORZEA] 외형검색 시작: slot={}, item='{}', limit={}",
+            slot.filterParam,
+            itemEnglishName,
+            limit
+        )
 
-        PlaywrightBrowserFactory.createForGlamour(width = 1600, height = 1800).use { session ->
-            val page = session.page
+        try {
+            PlaywrightBrowserFactory.createForGlamour(width = 1600, height = 1800).use { session ->
+                val page = session.page
 
-            page.navigate(EORZEA_GLAMOURS_URL)
-            page.waitForLoadState()
-            checkCloudflareBlocked(page)
+                val navigateStartedAt = System.nanoTime()
+                logger.info("[EORZEA] 목록 페이지 접속 시도")
+                page.navigate(EORZEA_GLAMOURS_URL)
+                page.waitForLoadState()
+                logger.info("[EORZEA] 목록 페이지 접속 완료: elapsedMs={}", elapsedMs(navigateStartedAt))
+                checkCloudflareBlocked(page)
 
-            val input = findFilterInput(page, slot)
-            input.fill(itemEnglishName)
+                val input = findFilterInput(page, slot)
+                logger.info("[EORZEA] 필터 입력 필드 탐색 완료: slot={}", slot.filterParam)
+                input.fill(itemEnglishName)
+                logger.info("[EORZEA] 필터 입력 완료: '{}'", itemEnglishName)
 
-            selectDropdownOption(page, input, itemEnglishName)
-            val beforeApplyUrl = page.url()
-            val beforeApplyGlamours = extractGlamours(page).take(limit)
-            clickApplyFilter(page)
+                selectDropdownOption(page, input, itemEnglishName)
+                val beforeApplyUrl = page.url()
+                val beforeApplyGlamours = extractGlamours(page).take(limit)
+                logger.info(
+                    "[EORZEA] Apply 전 프리뷰 결과: count={}, url={}",
+                    beforeApplyGlamours.size,
+                    beforeApplyUrl
+                )
+                clickApplyFilter(page)
+                logger.info("[EORZEA] Apply Filter 클릭 완료")
 
-            waitForFilteredResults(page, beforeApplyUrl, beforeApplyGlamours)
+                val waitResultStartedAt = System.nanoTime()
+                waitForFilteredResults(page, beforeApplyUrl, beforeApplyGlamours)
+                logger.info("[EORZEA] 필터 결과 반영 확인 완료: elapsedMs={}", elapsedMs(waitResultStartedAt))
 
-            val glamours = extractGlamours(page).take(limit)
-            if (glamours.isEmpty()) {
-                throw IllegalStateException("외형 결과를 찾지 못했습니다.")
+                val glamours = extractGlamours(page).take(limit)
+                if (glamours.isEmpty()) {
+                    throw IllegalStateException("외형 결과를 찾지 못했습니다.")
+                }
+
+                logger.info(
+                    "[EORZEA] 외형검색 완료: resultCount={}, elapsedMs={}",
+                    glamours.size,
+                    elapsedMs(startedAt)
+                )
+                glamours.forEachIndexed { index, result ->
+                    logger.info(
+                        "[EORZEA] 결과 {}: pageUrl={}, imageUrl={}",
+                        index + 1,
+                        result.pageUrl,
+                        result.imageUrl
+                    )
+                }
+
+                return glamours
             }
-
-            return glamours
+        } catch (e: Exception) {
+            logger.error(
+                "[EORZEA] 외형검색 실패: slot={}, item='{}', elapsedMs={}",
+                slot.filterParam,
+                itemEnglishName,
+                elapsedMs(startedAt),
+                e
+            )
+            throw e
         }
     }
 
@@ -90,6 +138,7 @@ class EorzeaCollectionGlamourClient {
     private fun selectDropdownOption(page: Page, input: Locator, itemEnglishName: String) {
         val normalizedTarget = normalizeText(itemEnglishName)
         val deadlineAt = System.currentTimeMillis() + 12_000L
+        logger.info("[EORZEA] 드롭다운 선택 시도 시작: target='{}'", itemEnglishName)
 
         while (System.currentTimeMillis() < deadlineAt) {
             val options = optionSelectors
@@ -100,18 +149,21 @@ class EorzeaCollectionGlamourClient {
             val exact = options.firstOrNull { normalizeText(it.innerText()) == normalizedTarget }
             if (exact != null) {
                 exact.click()
+                logger.info("[EORZEA] 드롭다운 정확 일치 선택 완료")
                 return
             }
 
             val partial = options.firstOrNull { normalizeText(it.innerText()).contains(normalizedTarget) }
             if (partial != null) {
                 partial.click()
+                logger.info("[EORZEA] 드롭다운 부분 일치 선택 완료")
                 return
             }
 
             page.waitForTimeout(200.0)
         }
 
+        logger.info("[EORZEA] 드롭다운 항목 미발견, Enter fallback 적용")
         input.press("Enter")
     }
 
@@ -190,6 +242,7 @@ class EorzeaCollectionGlamourClient {
         val titleBlocked = page.title().contains("Attention Required", ignoreCase = true)
         val bodyBlocked = page.content().contains("cf-error-details", ignoreCase = true)
         if (titleBlocked || bodyBlocked) {
+            logger.warn("[EORZEA] Cloudflare 차단 감지: titleBlocked={}, bodyBlocked={}", titleBlocked, bodyBlocked)
             throw IllegalStateException("Eorzea Collection 접근이 차단되었습니다. Cloudflare 차단 상태를 확인해주세요.")
         }
     }
@@ -224,6 +277,9 @@ class EorzeaCollectionGlamourClient {
             "a[href*='://ffxiv.eorzeacollection.com/glamour/']"
         )
     }
+
+    private fun elapsedMs(startedAtNanos: Long): Long =
+        (System.nanoTime() - startedAtNanos) / 1_000_000
 }
 
 private fun isGlamourPageUrl(url: String): Boolean {

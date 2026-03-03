@@ -5,11 +5,14 @@ import dev.kord.rest.NamedFile
 import feature.webdriver.PlaywrightBrowserFactory
 import io.ktor.client.request.forms.ChannelProvider
 import io.ktor.utils.io.jvm.javaio.toByteReadChannel
+import org.slf4j.LoggerFactory
 import java.io.File
 import java.net.URI
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
 import kotlin.io.path.createTempFile
+
+private val logger = LoggerFactory.getLogger(TarItemSearchClient::class.java)
 
 data class TarItemMatchedResult(
     val itemName: String,
@@ -38,53 +41,102 @@ fun TarItemSearchResult.NotMatched.toDiscordMessage(): String =
 class TarItemSearchClient {
 
     fun searchAndCapture(itemName: String): TarItemSearchResult {
+        val startedAt = System.nanoTime()
         val encodedItemName = URLEncoder.encode(itemName, StandardCharsets.UTF_8)
         val listUrl = "https://ff14.tar.to/item/list?keyword=$encodedItemName"
 
-        PlaywrightBrowserFactory.createForTar().use { session ->
-            val page = session.page
-            page.navigate(listUrl)
+        logger.info("[TAR] 검색 시작: itemName='{}', listUrl={}", itemName, listUrl)
 
-            val itemCandidates = page.locator(".results a")
-            val itemCandidateCount = itemCandidates.count()
-            val candidateLinks = (0 until itemCandidateCount).map { index ->
-                val candidate = itemCandidates.nth(index)
-                CandidateLink(
-                    text = candidate.innerText().orEmpty(),
-                    href = resolveItemPageLink(candidate.getAttribute("href").orEmpty())
+        try {
+            PlaywrightBrowserFactory.createForTar().use { session ->
+                val page = session.page
+                val listNavigateStartedAt = System.nanoTime()
+                logger.info("[TAR] 목록 페이지 접속 시도")
+                page.navigate(listUrl)
+                logger.info(
+                    "[TAR] 목록 페이지 접속 완료: elapsedMs={}",
+                    elapsedMs(listNavigateStartedAt)
+                )
+
+                val itemCandidates = page.locator(".results a")
+                val itemCandidateCount = itemCandidates.count()
+                logger.info("[TAR] 검색 후보 추출: count={}", itemCandidateCount)
+
+                val candidateLinks = (0 until itemCandidateCount).map { index ->
+                    val candidate = itemCandidates.nth(index)
+                    CandidateLink(
+                        text = candidate.innerText().orEmpty(),
+                        href = resolveItemPageLink(candidate.getAttribute("href").orEmpty())
+                    )
+                }
+
+                val itemPageLink = candidateLinks.firstOrNull {
+                    it.text.replace(" ", "") == itemName.replace(" ", "")
+                }?.href?.takeIf { it.isNotBlank() } ?: run {
+                    logger.info(
+                        "[TAR] 일치 항목 없음: itemName='{}', suggestions={}, elapsedMs={}",
+                        itemName,
+                        candidateLinks.take(5).map { it.text },
+                        elapsedMs(startedAt)
+                    )
+                    return TarItemSearchResult.NotMatched(
+                        candidateNames = candidateLinks.take(5).map { it.text }
+                    )
+                }
+
+                val itemIdFromSearchResult = extractItemIdFromItemPageLink(itemPageLink)
+                logger.info("[TAR] 항목 선택 완료: pageLink={}, itemId={}", itemPageLink, itemIdFromSearchResult)
+
+                val itemNavigateStartedAt = System.nanoTime()
+                page.navigate(itemPageLink)
+                logger.info(
+                    "[TAR] 아이템 상세 페이지 접속 완료: elapsedMs={}",
+                    elapsedMs(itemNavigateStartedAt)
+                )
+
+                val screenshotStartedAt = System.nanoTime()
+                val screenshotFile = captureContentsScreenshot(page.locator("#contents"))
+                logger.info(
+                    "[TAR] 스크린샷 캡처 완료: path={}, elapsedMs={}",
+                    screenshotFile.absolutePath,
+                    elapsedMs(screenshotStartedAt)
+                )
+
+                val itemCategoryKorean = page.locator("#item-category")
+                    .firstOrNullText()
+                    ?.trim()
+                    ?.takeIf { it.isNotBlank() }
+                val englishName = page.locator("#item-name-lang > span:nth-child(1)")
+                    .firstOrNullText()
+                    .orEmpty()
+
+                logger.info(
+                    "[TAR] 검색 완료: itemName='{}', english='{}', category='{}', elapsedMs={}",
+                    itemName,
+                    englishName,
+                    itemCategoryKorean ?: "N/A",
+                    elapsedMs(startedAt)
+                )
+
+                return TarItemSearchResult.Matched(
+                    TarItemMatchedResult(
+                        itemName = itemName,
+                        itemPageLink = itemPageLink,
+                        itemIdFromPageLink = itemIdFromSearchResult,
+                        itemCategoryKorean = itemCategoryKorean,
+                        englishName = englishName,
+                        screenshotFile = screenshotFile
+                    )
                 )
             }
-
-            val itemPageLink = candidateLinks.firstOrNull {
-                it.text.replace(" ", "") == itemName.replace(" ", "")
-            }?.href?.takeIf { it.isNotBlank() } ?: run {
-                return TarItemSearchResult.NotMatched(
-                    candidateNames = candidateLinks.take(5).map { it.text }
-                )
-            }
-
-            val itemIdFromSearchResult = extractItemIdFromItemPageLink(itemPageLink)
-            page.navigate(itemPageLink)
-
-            val screenshotFile = captureContentsScreenshot(page.locator("#contents"))
-            val itemCategoryKorean = page.locator("#item-category")
-                .firstOrNullText()
-                ?.trim()
-                ?.takeIf { it.isNotBlank() }
-            val englishName = page.locator("#item-name-lang > span:nth-child(1)")
-                .firstOrNullText()
-                .orEmpty()
-
-            return TarItemSearchResult.Matched(
-                TarItemMatchedResult(
-                    itemName = itemName,
-                    itemPageLink = itemPageLink,
-                    itemIdFromPageLink = itemIdFromSearchResult,
-                    itemCategoryKorean = itemCategoryKorean,
-                    englishName = englishName,
-                    screenshotFile = screenshotFile
-                )
+        } catch (e: Exception) {
+            logger.error(
+                "[TAR] 검색 실패: itemName='{}', elapsedMs={}",
+                itemName,
+                elapsedMs(startedAt),
+                e
             )
+            throw e
         }
     }
 
@@ -136,4 +188,7 @@ class TarItemSearchClient {
             }.getOrNull()
         }
     }
+
+    private fun elapsedMs(startedAtNanos: Long): Long =
+        (System.nanoTime() - startedAtNanos) / 1_000_000
 }
