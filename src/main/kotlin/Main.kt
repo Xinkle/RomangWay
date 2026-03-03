@@ -47,6 +47,7 @@ suspend fun main() = withContext(Dispatchers.IO) {
     val commandTeachingFeature = CommandTeachingFeature(kord)
     val commandFindingFeature = CommandFindingFeature()
     val itemSearchFeature = ItemSearchFeature()
+    val glamourSearchFeature = GlamourSearchFeature()
     val directHitCalculatorFeature = DirectHitCalculatorFeature()
     val openAiChatFeature = OpenAiChatFeature(kord)
     val topSimulatorFeature = TopSimulatorFeature(kord)
@@ -59,6 +60,7 @@ suspend fun main() = withContext(Dispatchers.IO) {
         commandTeachingFeature,
         commandFindingFeature,
         itemSearchFeature,
+        glamourSearchFeature,
         directHitCalculatorFeature,
         ffLogDeathAnalyzeFeature,
         topSimulatorFeature,
