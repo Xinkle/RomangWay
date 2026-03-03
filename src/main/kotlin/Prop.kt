@@ -17,6 +17,7 @@ object Prop {
         KEY_DISCORD_BOT_TOKEN,
         KEY_FFLOG_CLIENT_ID,
         KEY_FFLOG_CLIENT_SECRET,
+        KEY_CHROMEDRIVER,
         KEY_CHROME_CDP,
         KEY_DATABASE,
         KEY_DATABASE_ID,
@@ -28,7 +29,6 @@ object Prop {
         KEY_DISCORD_BOT_TOKEN to listOf("DISCORD_BOT_TOKEN"),
         KEY_FFLOG_CLIENT_ID to listOf("FFLOGS_CLIENT_ID", "FFLOG_CLIENT_ID"),
         KEY_FFLOG_CLIENT_SECRET to listOf("FFLOGS_CLIENT_SECRET", "FFLOG_CLIENT_SECRET"),
-        // Deprecated but kept for backward compatibility in local files.
         KEY_CHROMEDRIVER to listOf("CHROMEDRIVER"),
         KEY_CHROME_CDP to listOf("CHROME_CDP"),
         KEY_DATABASE to listOf("DATABASE"),
@@ -71,10 +71,8 @@ object Prop {
     fun getDiscordBotToken(): String = prop.getProperty(KEY_DISCORD_BOT_TOKEN)
     fun getFFlogClientId(): String = prop.getProperty(KEY_FFLOG_CLIENT_ID)
     fun getFFLogClientSecret(): String = prop.getProperty(KEY_FFLOG_CLIENT_SECRET)
-    fun getChromeCdp(): String =
-        prop.getProperty(KEY_CHROME_CDP)?.trim()?.takeIf { it.isNotEmpty() }
-            ?: prop.getProperty(KEY_CHROMEDRIVER)?.trim()?.takeIf { it.isNotEmpty() }
-            ?: error("$KEY_CHROME_CDP Can't be empty!!")
+    fun getChromeDriver(): String = prop.getProperty(KEY_CHROMEDRIVER)
+    fun getChromeCdp(): String = prop.getProperty(KEY_CHROME_CDP)
     fun getDatabase(): String = prop.getProperty(KEY_DATABASE)
     fun getDatabaseId(): String = prop.getProperty(KEY_DATABASE_ID)
     fun getDatabasePw(): String = prop.getProperty(KEY_DATABASE_PW)
