@@ -2,12 +2,17 @@ package feature.eorzea
 
 import com.microsoft.playwright.Locator
 import com.microsoft.playwright.Page
+import com.microsoft.playwright.options.WaitUntilState
 import feature.webdriver.PlaywrightBrowserFactory
 import org.slf4j.LoggerFactory
 
 private const val EORZEA_BASE_URL = "https://ffxiv.eorzeacollection.com"
 private const val EORZEA_GLAMOURS_URL =
     "https://ffxiv.eorzeacollection.com/glamours?filter%5BorderBy%5D=loves&filter%5BdatePeriod%5D=past-year&filter%5Bgender%5D=any&filter%5Bserver%5D=any&search=&author=&filter%5Bclass%5D=&filter%5Bstyle%5D=&filter%5Btheme%5D=&filter%5Bcolor%5D=&filter%5Bjob%5D=all&filter%5BminimumLvl%5D=1&filter%5BmaximumLvl%5D=100&filter%5BheadPiece%5D=&filter%5BbodyPiece%5D=&filter%5BhandsPiece%5D=&filter%5BlegsPiece%5D=&filter%5BfeetPiece%5D=&filter%5BweaponPiece%5D=&filter%5BoffhandPiece%5D=&filter%5BearringsPiece%5D=&filter%5BnecklacePiece%5D=&filter%5BbraceletsPiece%5D=&filter%5BringPiece%5D=&filter%5BfashionPiece%5D=&filter%5BfacePiece%5D=&page=1"
+private const val EORZEA_NAVIGATION_TIMEOUT_MS = 60_000.0
+private const val EORZEA_NAVIGATION_MAX_ATTEMPTS = 2
+private const val EORZEA_NAVIGATION_RETRY_DELAY_MS = 700.0
+private const val EORZEA_FILTER_INPUT_WAIT_TIMEOUT_MS = 15_000L
 
 private val logger = LoggerFactory.getLogger(EorzeaCollectionGlamourClient::class.java)
 
@@ -57,8 +62,7 @@ class EorzeaCollectionGlamourClient {
 
                 val navigateStartedAt = System.nanoTime()
                 logger.info("[EORZEA] 목록 페이지 접속 시도")
-                page.navigate(EORZEA_GLAMOURS_URL)
-                page.waitForLoadState()
+                navigateWithRetry(page, EORZEA_GLAMOURS_URL, "목록")
                 logger.info("[EORZEA] 목록 페이지 접속 완료: elapsedMs={}", elapsedMs(navigateStartedAt))
                 checkCloudflareBlocked(page)
 
@@ -122,11 +126,20 @@ class EorzeaCollectionGlamourClient {
             "input[name='filter[${slot.filterParam}]']",
             "xpath=//input[contains(translate(@placeholder,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'any') and " +
                 "contains(translate(@placeholder,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'$slotToken')]",
-            "xpath=//input[contains(translate(@aria-label,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'$slotToken')]"
+                "xpath=//input[contains(translate(@aria-label,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'$slotToken')]"
         )
 
-        return firstVisibleLocator(page, selectors)
-            ?: throw IllegalStateException("Eorzea 필터 입력 필드를 찾지 못했습니다. slot=${slot.filterParam}")
+        val deadlineAt = System.currentTimeMillis() + EORZEA_FILTER_INPUT_WAIT_TIMEOUT_MS
+        while (System.currentTimeMillis() < deadlineAt) {
+            checkCloudflareBlocked(page)
+            val visibleInput = firstVisibleLocator(page, selectors)
+            if (visibleInput != null) return visibleInput
+            page.waitForTimeout(250.0)
+        }
+
+        throw IllegalStateException(
+            "Eorzea 필터 입력 필드를 찾지 못했습니다. slot=${slot.filterParam}, title=${page.title()}, url=${page.url()}"
+        )
     }
 
     private fun firstVisibleLocator(page: Page, selectors: List<String>): Locator? =
@@ -239,12 +252,66 @@ class EorzeaCollectionGlamourClient {
     }
 
     private fun checkCloudflareBlocked(page: Page) {
-        val titleBlocked = page.title().contains("Attention Required", ignoreCase = true)
-        val bodyBlocked = page.content().contains("cf-error-details", ignoreCase = true)
-        if (titleBlocked || bodyBlocked) {
-            logger.warn("[EORZEA] Cloudflare 차단 감지: titleBlocked={}, bodyBlocked={}", titleBlocked, bodyBlocked)
+        val title = runCatching { page.title() }.getOrDefault("")
+        val url = runCatching { page.url() }.getOrDefault("")
+        val content = runCatching { page.content() }.getOrDefault("")
+
+        val titleBlocked = title.contains("Attention Required", ignoreCase = true) ||
+            title.contains("Just a moment", ignoreCase = true) ||
+            title.contains("Checking your browser", ignoreCase = true)
+        val bodyBlocked = content.contains("cf-error-details", ignoreCase = true) ||
+            content.contains("challenge-platform", ignoreCase = true) ||
+            content.contains("cf_chl", ignoreCase = true)
+        val urlBlocked = url.contains("/cdn-cgi/challenge-platform", ignoreCase = true)
+
+        if (titleBlocked || bodyBlocked || urlBlocked) {
+            logger.warn(
+                "[EORZEA] Cloudflare 차단 감지: titleBlocked={}, bodyBlocked={}, urlBlocked={}, title={}, url={}",
+                titleBlocked,
+                bodyBlocked,
+                urlBlocked,
+                title,
+                url
+            )
             throw IllegalStateException("Eorzea Collection 접근이 차단되었습니다. Cloudflare 차단 상태를 확인해주세요.")
         }
+    }
+
+    private fun navigateWithRetry(page: Page, url: String, stepName: String) {
+        var lastError: Throwable? = null
+
+        repeat(EORZEA_NAVIGATION_MAX_ATTEMPTS) { attempt ->
+            val attemptNo = attempt + 1
+            val succeeded = runCatching {
+                page.navigate(
+                    url,
+                    Page.NavigateOptions()
+                        .setWaitUntil(WaitUntilState.DOMCONTENTLOADED)
+                        .setTimeout(EORZEA_NAVIGATION_TIMEOUT_MS)
+                )
+            }.onFailure { error ->
+                lastError = error
+                logger.warn(
+                    "[EORZEA] {} 페이지 접속 실패: attempt={}/{}, url={}, message={}",
+                    stepName,
+                    attemptNo,
+                    EORZEA_NAVIGATION_MAX_ATTEMPTS,
+                    url,
+                    error.message
+                )
+            }.isSuccess
+
+            if (succeeded) return
+
+            if (attemptNo < EORZEA_NAVIGATION_MAX_ATTEMPTS) {
+                page.waitForTimeout(EORZEA_NAVIGATION_RETRY_DELAY_MS)
+            }
+        }
+
+        throw IllegalStateException(
+            "Eorzea $stepName 페이지 접속에 실패했습니다. url=$url",
+            lastError
+        )
     }
 
     private fun normalizeText(input: String): String =
