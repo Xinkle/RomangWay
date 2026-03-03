@@ -41,7 +41,7 @@ class EorzeaCollectionGlamourClient {
     ): List<EorzeaGlamourResult> {
         require(itemEnglishName.isNotBlank()) { "영문 아이템 이름이 비어 있습니다." }
 
-        PlaywrightBrowserFactory.create(width = 1600, height = 1800).use { session ->
+        PlaywrightBrowserFactory.createForGlamour(width = 1600, height = 1800).use { session ->
             val page = session.page
 
             page.navigate(EORZEA_GLAMOURS_URL)
