@@ -10,11 +10,14 @@ import feature.universalis.JsonItemFinder
 import feature.universalis.UniversalisClient
 import feature.universalis.UniversalisWorlds
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.withContext
 import org.jetbrains.exposed.sql.transactions.transaction
 import kotlin.coroutines.CoroutineContext
 
 private const val ARGUMENT_ITEM_NAME = "아이템_이름"
+private const val TAR_ITEM_SEARCH_TIMEOUT_MS = 45_000L
 
 class ItemSearchFeature : CoroutineScope, ChatInputCommandInteractionListener {
     private val tarItemSearchClient = TarItemSearchClient()
@@ -38,7 +41,11 @@ class ItemSearchFeature : CoroutineScope, ChatInputCommandInteractionListener {
         val response = interaction.deferPublicResponse()
 
         val itemName = command.strings[ARGUMENT_ITEM_NAME]!!
-        val tarResult = tarItemSearchClient.searchAndCapture(itemName)
+        val tarResult = runWithCommandTimeout("TAR 아이템 검색", TAR_ITEM_SEARCH_TIMEOUT_MS) {
+            withContext(Dispatchers.IO) {
+                tarItemSearchClient.searchAndCapture(itemName)
+            }
+        }
         if (tarResult is TarItemSearchResult.NotMatched) {
             response.respond { content = tarResult.toDiscordMessage() }
             return

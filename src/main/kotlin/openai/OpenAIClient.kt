@@ -15,7 +15,10 @@ import io.ktor.serialization.kotlinx.json.*
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import org.slf4j.LoggerFactory
 import kotlin.properties.Delegates
+
+private val logger = LoggerFactory.getLogger(OpenAIClient::class.java)
 
 class OpenAIClient {
     private var client: HttpClient by Delegates.notNull()
@@ -40,6 +43,8 @@ class OpenAIClient {
     }
 
     suspend fun request(prompt: String): String {
+        val startedAt = System.nanoTime()
+        logger.info("OpenAI 요청 시작: promptLength={}", prompt.length)
         val appendedPrompt = StringBuilder(prompt)
         val responseString = StringBuilder()
 
@@ -50,11 +55,12 @@ class OpenAIClient {
 
         } while (response.choices.firstOrNull()?.finishReason != "stop")
 
+        logger.info("OpenAI 요청 완료: responseLength={}, elapsedMs={}", responseString.length, elapsedMs(startedAt))
         return responseString.toString()
     }
 
     private suspend fun requestOpenAiCompletion(prompt: String): OpenAIResponse {
-        println("Request OpenAI Completion with prompt -> $prompt")
+        logger.debug("OpenAI completion 요청: promptLength={}", prompt.length)
         val request = OpenAIRequest(
             0,
             256,
@@ -78,4 +84,7 @@ class OpenAIClient {
         }
 
     }
+
+    private fun elapsedMs(startedAtNanos: Long): Long =
+        (System.nanoTime() - startedAtNanos) / 1_000_000
 }

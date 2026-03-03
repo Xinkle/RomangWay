@@ -14,7 +14,9 @@ import feature.tar.toDiscordMessage
 import io.ktor.client.request.forms.ChannelProvider
 import io.ktor.utils.io.jvm.javaio.toByteReadChannel
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.withContext
 import java.io.File
 import java.net.URI
 import java.net.URL
@@ -24,6 +26,11 @@ import kotlin.coroutines.CoroutineContext
 private const val ARGUMENT_ITEM_NAME = "아이템이름"
 private const val GLAMOUR_RESULT_LIMIT = 6
 private const val MAX_BUTTONS_PER_ROW = 5
+private const val TAR_ITEM_SEARCH_TIMEOUT_MS = 45_000L
+private const val EORZEA_SEARCH_TIMEOUT_MS = 75_000L
+private const val IMAGE_DOWNLOAD_TIMEOUT_MS = 30_000L
+private const val IMAGE_CONNECT_TIMEOUT_MS = 8_000
+private const val IMAGE_READ_TIMEOUT_MS = 20_000
 
 class GlamourSearchFeature : CoroutineScope, ChatInputCommandInteractionListener {
     private val tarItemSearchClient = TarItemSearchClient()
@@ -48,7 +55,13 @@ class GlamourSearchFeature : CoroutineScope, ChatInputCommandInteractionListener
         val response = interaction.deferPublicResponse()
         val itemName = command.strings[ARGUMENT_ITEM_NAME]!!
 
-        when (val tarResult = tarItemSearchClient.searchAndCapture(itemName)) {
+        val tarResult = runWithCommandTimeout("TAR 아이템 검색", TAR_ITEM_SEARCH_TIMEOUT_MS) {
+            withContext(Dispatchers.IO) {
+                tarItemSearchClient.searchAndCapture(itemName)
+            }
+        }
+
+        when (tarResult) {
             is TarItemSearchResult.NotMatched -> response.respond {
                 content = tarResult.toDiscordMessage()
             }
@@ -69,12 +82,20 @@ class GlamourSearchFeature : CoroutineScope, ChatInputCommandInteractionListener
                         return
                     }
 
-                val glamours = eorzeaCollectionGlamourClient.findTopGlamours(
-                    slot = slot,
-                    itemEnglishName = englishName,
-                    limit = GLAMOUR_RESULT_LIMIT
-                )
-                val attachments = downloadGlamourImages(glamours)
+                val glamours = runWithCommandTimeout("외형 검색", EORZEA_SEARCH_TIMEOUT_MS) {
+                    withContext(Dispatchers.IO) {
+                        eorzeaCollectionGlamourClient.findTopGlamours(
+                            slot = slot,
+                            itemEnglishName = englishName,
+                            limit = GLAMOUR_RESULT_LIMIT
+                        )
+                    }
+                }
+                val attachments = runWithCommandTimeout("외형 이미지 다운로드", IMAGE_DOWNLOAD_TIMEOUT_MS) {
+                    withContext(Dispatchers.IO) {
+                        downloadGlamourImages(glamours)
+                    }
+                }
 
                 try {
                     response.respond {
@@ -111,7 +132,12 @@ class GlamourSearchFeature : CoroutineScope, ChatInputCommandInteractionListener
                 suffix = ".$extension"
             ).toFile()
 
-            URL(glamour.imageUrl).openStream().use { input ->
+            val connection = URL(glamour.imageUrl).openConnection().apply {
+                connectTimeout = IMAGE_CONNECT_TIMEOUT_MS
+                readTimeout = IMAGE_READ_TIMEOUT_MS
+            }
+
+            connection.getInputStream().use { input ->
                 localFile.outputStream().use { output ->
                     input.copyTo(output)
                 }
