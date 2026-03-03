@@ -3,6 +3,7 @@ package feature
 import creat.xinkle.Romangway.GetFFlogRanking
 import creat.xinkle.Romangway.GetFFlogSavageZones
 import dev.kord.core.Kord
+import dev.kord.core.behavior.edit
 import dev.kord.core.behavior.interaction.updateEphemeralMessage
 import dev.kord.core.behavior.interaction.updatePublicMessage
 import dev.kord.core.behavior.interaction.response.respond
@@ -20,6 +21,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
 import dev.kord.rest.builder.message.EmbedBuilder
+import org.slf4j.LoggerFactory
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.coroutines.CoroutineContext
@@ -28,6 +30,10 @@ private const val ARGUMENT_NAME = "이름"
 private const val ARGUMENT_SERVER = "서버"
 private const val ARGUMENT_EXPOSABLE = "공개여부"
 private const val FFLOG_RANKING_SELECT_PREFIX = "FFLOG_RANKING_SPEC"
+private const val FFLOG_ZONE_QUERY_TIMEOUT_MS = 20_000L
+private const val FFLOG_RANKING_QUERY_TIMEOUT_MS = 25_000L
+
+private val logger = LoggerFactory.getLogger(FFLogFeature::class.java)
 
 class FFLogFeature(
     private val kord: Kord,
@@ -108,38 +114,106 @@ class FFLogFeature(
         } else {
             interaction.deferEphemeralResponse()
         }
+        response.respond {
+            content = "진행 중: 프프로그 조회를 시작합니다."
+        }
 
-        try {
-            requireNotNull(mappedServer) { "서버 이름이 올바르지 않습니다." }
+        requireNotNull(mappedServer) { "서버 이름이 올바르지 않습니다." }
 
-            val zones = getFFlogSavageZones()
-            val currentTopSavageZone = requireNotNull(FFlogRankingLogic.findCurrentTopSavageZoneCandidate(zones)) {
-                "현재 Savage 레이드 정보를 찾을 수 없습니다."
-            }
-            val currentTierRanking = getFFlog(
+        updateDeferredProgress(interaction, "1/5 최상위 영식 레이드 정보를 조회 중입니다.")
+        val zones = runWithCommandTimeout("최상위 영식 레이드 조회", FFLOG_ZONE_QUERY_TIMEOUT_MS) {
+            getFFlogSavageZones()
+        }
+        val currentTopSavageZone = requireNotNull(FFlogRankingLogic.findCurrentTopSavageZoneCandidate(zones)) {
+            "현재 Savage 레이드 정보를 찾을 수 없습니다."
+        }
+
+        updateDeferredProgress(
+            interaction,
+            "2/5 ${currentTopSavageZone.zoneName} 기준 기본 랭킹을 조회 중입니다."
+        )
+        val currentTierRanking = runWithCommandTimeout("기본 랭킹 조회", FFLOG_RANKING_QUERY_TIMEOUT_MS) {
+            getFFlog(
                 name = name,
                 server = mappedServer,
                 zoneId = currentTopSavageZone.zoneId,
                 difficulty = currentTopSavageZone.difficultyId
             )
-            val specNames = FFlogRankingLogic.extractSpecNames(currentTierRanking)
+        }
 
-            val summaries = specNames.mapNotNull { specName ->
-                val specRanking = getFFlog(
+        updateDeferredProgress(interaction, "3/5 클리어 직업 목록을 정리 중입니다.")
+        val specNames = FFlogRankingLogic.extractSpecNames(currentTierRanking)
+
+        val summaries = specNames.mapIndexedNotNull { index, specName ->
+            updateDeferredProgress(
+                interaction,
+                "4/5 직업별 랭킹 조회 중 (${index + 1}/${specNames.size}): $specName"
+            )
+            val specRanking = runWithCommandTimeout("직업별 랭킹 조회($specName)", FFLOG_RANKING_QUERY_TIMEOUT_MS) {
+                getFFlog(
                     name = name,
                     server = mappedServer,
                     spec = specName,
                     zoneId = currentTopSavageZone.zoneId,
                     difficulty = currentTopSavageZone.difficultyId
-                ) ?: return@mapNotNull null
+                )
+            }
 
-                if (!FFlogRankingLogic.hasAnyTierProgress(specRanking)) {
-                    return@mapNotNull null
+            if (!FFlogRankingLogic.hasAnyTierProgress(specRanking)) {
+                return@mapIndexedNotNull null
+            }
+
+            FFlogRankingSummary.fromRanking(specRanking, name, server)
+        }.sortedByDescending { it.allStarPointValueOrDefault() }
+
+        updateDeferredProgress(interaction, "5/5 조회 결과를 정리하여 전송 중입니다.")
+        val originalResponse = interaction.getOriginalInteractionResponseOrNull()
+        if (originalResponse != null) {
+            originalResponse.edit {
+                if (summaries.isEmpty()) {
+                    embeds = mutableListOf(
+                        buildNoClearRankingEmbed(
+                            raidName = currentTopSavageZone.zoneName,
+                            name = name,
+                            server = server
+                        )
+                    )
+                    components?.clear()
+                } else {
+                    val defaultIndex = 0
+                    val selectedSummary = summaries[defaultIndex]
+                    val sessionId = UUID.randomUUID().toString()
+
+                    rankingSelectSessions[sessionId] = RankingSelectSession(
+                        raidName = currentTopSavageZone.zoneName,
+                        name = name,
+                        server = server,
+                        isPublic = isExposable,
+                        summaries = summaries
+                    )
+
+                    embeds = mutableListOf(
+                        buildRankingEmbed(
+                            session = rankingSelectSessions.getValue(sessionId),
+                            selectedSummary = selectedSummary
+                        )
+                    )
+                    if (summaries.size > 1) {
+                        components = mutableListOf(
+                            buildRankingSelectActionRow(
+                                sessionId = sessionId,
+                                summaries = summaries,
+                                selectedIndex = defaultIndex
+                            )
+                        )
+                    } else {
+                        components?.clear()
+                    }
                 }
-
-                FFlogRankingSummary.fromRanking(specRanking, name, server)
-            }.sortedByDescending { it.allStarPointValueOrDefault() }
-
+                content = ""
+            }
+        } else {
+            logger.warn("원본 응답이 없어 최종 결과를 신규 응답으로 전송합니다.")
             response.respond {
                 if (summaries.isEmpty()) {
                     embeds = mutableListOf(
@@ -183,12 +257,6 @@ class FFLogFeature(
                 }
                 content = ""
             }
-        } catch (e: Exception) {
-            println("Error occurred -> $e")
-
-            response.respond {
-                content = "알수없는 오류가 발생했어요..."
-            }
         }
     }
 
@@ -217,7 +285,7 @@ class FFLogFeature(
         )
 
         val fflogRanking: FFlogRanking = json.decodeFromString(result)
-        println(fflogRanking)
+        logger.debug("FFLog ranking 조회 응답 파싱 완료: name={}, server={}, spec={}", name, server, spec)
 
         return fflogRanking
     }
