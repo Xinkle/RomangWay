@@ -7,7 +7,6 @@ object Prop {
     private const val KEY_FFLOG_CLIENT_ID = "fflog_client_id"
     private const val KEY_FFLOG_CLIENT_SECRET = "fflog_client_secret"
     private const val KEY_CHROMEDRIVER = "chromedriver"
-    private const val KEY_CHROME_CDP = "chrome_cdp"
     private const val KEY_DATABASE = "database"
     private const val KEY_DATABASE_ID = "db_id"
     private const val KEY_DATABASE_PW = "db_pw"
@@ -18,7 +17,6 @@ object Prop {
         KEY_FFLOG_CLIENT_ID,
         KEY_FFLOG_CLIENT_SECRET,
         KEY_CHROMEDRIVER,
-        KEY_CHROME_CDP,
         KEY_DATABASE,
         KEY_DATABASE_ID,
         KEY_DATABASE_PW,
@@ -30,7 +28,6 @@ object Prop {
         KEY_FFLOG_CLIENT_ID to listOf("FFLOGS_CLIENT_ID", "FFLOG_CLIENT_ID"),
         KEY_FFLOG_CLIENT_SECRET to listOf("FFLOGS_CLIENT_SECRET", "FFLOG_CLIENT_SECRET"),
         KEY_CHROMEDRIVER to listOf("CHROMEDRIVER"),
-        KEY_CHROME_CDP to listOf("CHROME_CDP"),
         KEY_DATABASE to listOf("DATABASE"),
         KEY_DATABASE_ID to listOf("DB_ID", "DATABASE_ID"),
         KEY_DATABASE_PW to listOf("DB_PW", "DATABASE_PW"),
@@ -72,7 +69,6 @@ object Prop {
     fun getFFlogClientId(): String = prop.getProperty(KEY_FFLOG_CLIENT_ID)
     fun getFFLogClientSecret(): String = prop.getProperty(KEY_FFLOG_CLIENT_SECRET)
     fun getChromeDriver(): String = prop.getProperty(KEY_CHROMEDRIVER)
-    fun getChromeCdp(): String = prop.getProperty(KEY_CHROME_CDP)
     fun getDatabase(): String = prop.getProperty(KEY_DATABASE)
     fun getDatabaseId(): String = prop.getProperty(KEY_DATABASE_ID)
     fun getDatabasePw(): String = prop.getProperty(KEY_DATABASE_PW)
