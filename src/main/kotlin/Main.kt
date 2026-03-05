@@ -1,5 +1,6 @@
 import database.CommandTeachingTable
 import database.ItemTable
+import dev.kord.common.entity.DiscordApplicationCommand
 import dev.kord.core.Kord
 import dev.kord.core.event.interaction.ChatInputCommandInteractionCreateEvent
 import dev.kord.core.on
@@ -18,6 +19,7 @@ import org.jetbrains.exposed.sql.addLogger
 import org.jetbrains.exposed.sql.transactions.transaction
 
 private val logger = LoggerFactory.getLogger("Main")
+private const val LEGACY_GLAMOUR_COMMAND = "외형검색"
 
 suspend fun main() = withContext(Dispatchers.IO) {
     logger.info("Romangway 애플리케이션 시작")
@@ -45,6 +47,7 @@ suspend fun main() = withContext(Dispatchers.IO) {
         emptyList()
     }
     logger.info("기존 글로벌 커맨드 목록 조회 완료: {}개", existingCommands.size)
+    deleteLegacyCommandIfExists(kord, existingCommands, LEGACY_GLAMOUR_COMMAND)
 
     // FFLog 클라이언트 초기화 및 토큰 갱신
     logger.info("FFLog 클라이언트 초기화 및 토큰 갱신 시작")
@@ -58,7 +61,6 @@ suspend fun main() = withContext(Dispatchers.IO) {
     val commandTeachingFeature = CommandTeachingFeature(kord)
     val commandFindingFeature = CommandFindingFeature()
     val itemSearchFeature = ItemSearchFeature()
-    val glamourSearchFeature = GlamourSearchFeature()
     val directHitCalculatorFeature = DirectHitCalculatorFeature()
     val openAiChatFeature = OpenAiChatFeature(kord)
     val topSimulatorFeature = TopSimulatorFeature(kord)
@@ -71,7 +73,6 @@ suspend fun main() = withContext(Dispatchers.IO) {
         commandTeachingFeature,
         commandFindingFeature,
         itemSearchFeature,
-        glamourSearchFeature,
         directHitCalculatorFeature,
         ffLogDeathAnalyzeFeature,
         topSimulatorFeature,
@@ -116,5 +117,21 @@ suspend fun main() = withContext(Dispatchers.IO) {
         // 메시지 내용을 수신하기 위해 필수 권한(Intents) 설정
         @OptIn(PrivilegedIntent::class)
         intents += Intent.MessageContent
+    }
+}
+
+private suspend fun deleteLegacyCommandIfExists(
+    kord: Kord,
+    existingCommands: List<DiscordApplicationCommand>,
+    legacyCommandName: String
+) {
+    val legacyCommand = existingCommands.firstOrNull { it.name == legacyCommandName } ?: return
+
+    runCatching {
+        kord.rest.interaction.deleteGlobalApplicationCommand(kord.selfId, legacyCommand.id)
+    }.onSuccess {
+        logger.info("레거시 글로벌 커맨드 삭제 완료: name={}, id={}", legacyCommandName, legacyCommand.id.value)
+    }.onFailure { e ->
+        logger.warn("레거시 글로벌 커맨드 삭제 실패: name={}, id={}", legacyCommandName, legacyCommand.id.value, e)
     }
 }
