@@ -284,14 +284,21 @@ class FFLogFeature(
         return ContainerBuilder().apply {
             accentColor = colorTier.accentColor
             textDisplay(
-                """
-                ## ${session.raidName}
-                이름: ${session.name}
-                서버: ${session.server}
-
-                ${selectedSummary.toDetailDescriptionWithoutIdentity()}
-                파스 색상 등급: ${colorTier.label}
-                """.trimIndent()
+                buildString {
+                    appendLine("## ${session.raidName}")
+                    appendLine("이름: ${session.name}")
+                    appendLine("서버: ${session.server}")
+                    appendLine()
+                    appendLine("직업: ${selectedSummary.toEmbedFieldName()}")
+                    appendLine("올스타 포인트: ${selectedSummary.allStarPoint ?: "N/A"}")
+                    appendLine("올스타 백분위: ${selectedSummary.allStarPercent ?: "N/A"}")
+                    appendLine("올스타 등수: ${selectedSummary.allStarRankings ?: "N/A"}")
+                    appendLine("1층: ${selectedSummary.firstFloor ?: "N/A"}")
+                    appendLine("2층: ${selectedSummary.secondFloor ?: "N/A"}")
+                    appendLine("3층: ${selectedSummary.thirdFloor ?: "N/A"}")
+                    appendLine("4층전반: ${selectedSummary.fourthFloor ?: "N/A"}")
+                    append("4층후반: ${selectedSummary.fifthFloor ?: "N/A"}")
+                }
             )
         }
     }
@@ -303,13 +310,13 @@ class FFLogFeature(
     ): ContainerBuilder = ContainerBuilder().apply {
         accentColor = FFlogParseColorTier.GRAY.accentColor
         textDisplay(
-            """
-            ## $raidName
-            이름: $name
-            서버: $server
-
-            클리어 기록 없음
-            """.trimIndent()
+            buildString {
+                appendLine("## $raidName")
+                appendLine("이름: $name")
+                appendLine("서버: $server")
+                appendLine()
+                append("클리어 기록 없음")
+            }
         )
     }
 

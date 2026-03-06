@@ -91,7 +91,7 @@ data class FFlogRankingSummary(
         return when {
             displayInfo != null -> "${displayInfo.emoji} ${displayInfo.koreanName}"
             job != null -> job
-            else -> "직업: N/A"
+            else -> "N/A"
         }
     }
 
