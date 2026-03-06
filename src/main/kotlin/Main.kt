@@ -20,6 +20,7 @@ import org.jetbrains.exposed.sql.transactions.transaction
 
 private val logger = LoggerFactory.getLogger("Main")
 private const val LEGACY_GLAMOUR_COMMAND = "외형검색"
+private const val LEGACY_FFLOG_COMMAND = "프프로그"
 
 suspend fun main() = withContext(Dispatchers.IO) {
     logger.info("Romangway 애플리케이션 시작")
@@ -48,6 +49,7 @@ suspend fun main() = withContext(Dispatchers.IO) {
     }
     logger.info("기존 글로벌 커맨드 목록 조회 완료: {}개", existingCommands.size)
     deleteLegacyCommandIfExists(kord, existingCommands, LEGACY_GLAMOUR_COMMAND)
+    deleteLegacyCommandIfExists(kord, existingCommands, LEGACY_FFLOG_COMMAND)
 
     // FFLog 클라이언트 초기화 및 토큰 갱신
     logger.info("FFLog 클라이언트 초기화 및 토큰 갱신 시작")

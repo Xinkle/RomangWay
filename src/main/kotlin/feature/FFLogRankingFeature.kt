@@ -55,7 +55,7 @@ class FFLogFeature(
         "펜리르" to "Fenrir",
         "모그리" to "Moogle"
     )
-    override val command: String = "프프로그"
+    override val command: String = "로그"
 
     override val arguments: List<CommandArgument> = listOf(
         CommandArgument(
@@ -68,13 +68,18 @@ class FFLogFeature(
             ARGUMENT_SERVER,
             "가져올 유저의 서버",
             true,
-            ArgumentType.STRING
+            ArgumentType.STRING,
+            choices = serverMapping.keys.map { it to it }
         ),
         CommandArgument(
             ARGUMENT_EXPOSABLE,
             "조회한 로그의 공개여부",
             true,
-            ArgumentType.BOOLEAN
+            ArgumentType.STRING,
+            choices = listOf(
+                "공개" to "공개",
+                "비공개" to "비공개"
+            )
         )
     )
 
@@ -112,7 +117,13 @@ class FFLogFeature(
 
         val name = command.strings[ARGUMENT_NAME]!!
         val server = command.strings[ARGUMENT_SERVER]!!
-        val isExposable = command.booleans[ARGUMENT_EXPOSABLE]!!
+        val exposableOption = command.strings[ARGUMENT_EXPOSABLE]
+        val isExposable = when (exposableOption) {
+            "공개" -> true
+            "비공개" -> false
+            null -> command.booleans[ARGUMENT_EXPOSABLE]
+            else -> null
+        } ?: error("공개여부 값이 올바르지 않습니다.")
         val mappedServer = serverMapping[server]
 
         val response = if (isExposable) {
