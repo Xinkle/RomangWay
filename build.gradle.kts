@@ -84,7 +84,7 @@ repositories {
 }
 
 dependencies {
-    implementation("dev.kord:kord-core:0.17.0")
+    implementation("dev.kord:kord-core:0.18.0")
     testImplementation(kotlin("test"))
     implementation("org.jetbrains.exposed:exposed-core:$exposedVersion")
     implementation("org.jetbrains.exposed:exposed-dao:$exposedVersion")
