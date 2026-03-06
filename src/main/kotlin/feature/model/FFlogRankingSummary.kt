@@ -122,5 +122,7 @@ data class FFlogRankingSummary(
     fun allStarPointValueOrDefault(default: Double = -1.0): Double =
         allStarPoint?.substringBefore("/")?.trim()?.toDoubleOrNull() ?: default
 
+    fun allStarPercentValueOrNull(): Double? = allStarPercent?.toDoubleOrNull()
+
 
 }

@@ -2,6 +2,7 @@ package feature
 
 import creat.xinkle.Romangway.GetFFlogRanking
 import creat.xinkle.Romangway.GetFFlogSavageZones
+import dev.kord.common.entity.MessageFlag
 import dev.kord.core.Kord
 import dev.kord.core.behavior.edit
 import dev.kord.core.behavior.interaction.updateEphemeralMessage
@@ -11,16 +12,19 @@ import dev.kord.core.entity.interaction.ChatInputCommandInteraction
 import dev.kord.core.event.interaction.GuildSelectMenuInteractionCreateEvent
 import dev.kord.core.on
 import dev.kord.rest.builder.component.ActionRowBuilder
+import dev.kord.rest.builder.component.ContainerBuilder
+import dev.kord.rest.builder.component.MessageComponentBuilder
 import dev.kord.rest.builder.component.option
+import dev.kord.rest.builder.message.messageFlags
 import feature.model.FFlogRanking
+import feature.model.FFlogParseColorTier
 import feature.model.FFlogRankingSummary
 import feature.model.FFlogZones
 import fflog.FFlogJson
 import fflog.FFLogClient
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
-import dev.kord.rest.builder.message.EmbedBuilder
+import kotlinx.coroutines.launch
 import org.slf4j.LoggerFactory
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
@@ -86,15 +90,17 @@ class FFLogFeature(
 
                 if (session.isPublic) {
                     interaction.updatePublicMessage {
-                        content = ""
-                        embeds = mutableListOf(buildRankingEmbed(session, selectedSummary))
-                        components = mutableListOf(buildRankingSelectActionRow(sessionId, session.summaries, selectedIndex))
+                        messageFlags { +MessageFlag.IsComponentsV2 }
+                        content = null
+                        embeds = null
+                        components = buildRankingComponents(session, selectedSummary, sessionId, selectedIndex)
                     }
                 } else {
                     interaction.updateEphemeralMessage {
-                        content = ""
-                        embeds = mutableListOf(buildRankingEmbed(session, selectedSummary))
-                        components = mutableListOf(buildRankingSelectActionRow(sessionId, session.summaries, selectedIndex))
+                        messageFlags { +MessageFlag.IsComponentsV2 }
+                        content = null
+                        embeds = null
+                        components = buildRankingComponents(session, selectedSummary, sessionId, selectedIndex)
                     }
                 }
             }
@@ -170,15 +176,17 @@ class FFLogFeature(
         val originalResponse = interaction.getOriginalInteractionResponseOrNull()
         if (originalResponse != null) {
             originalResponse.edit {
+                messageFlags { +MessageFlag.IsComponentsV2 }
+                content = null
+                embeds = null
                 if (summaries.isEmpty()) {
-                    embeds = mutableListOf(
-                        buildNoClearRankingEmbed(
+                    components = mutableListOf(
+                        buildNoClearRankingContainer(
                             raidName = currentTopSavageZone.zoneName,
                             name = name,
                             server = server
                         )
                     )
-                    components?.clear()
                 } else {
                     val defaultIndex = 0
                     val selectedSummary = summaries[defaultIndex]
@@ -192,38 +200,28 @@ class FFLogFeature(
                         summaries = summaries
                     )
 
-                    embeds = mutableListOf(
-                        buildRankingEmbed(
-                            session = rankingSelectSessions.getValue(sessionId),
-                            selectedSummary = selectedSummary
-                        )
+                    components = buildRankingComponents(
+                        session = rankingSelectSessions.getValue(sessionId),
+                        selectedSummary = selectedSummary,
+                        sessionId = sessionId,
+                        selectedIndex = defaultIndex
                     )
-                    if (summaries.size > 1) {
-                        components = mutableListOf(
-                            buildRankingSelectActionRow(
-                                sessionId = sessionId,
-                                summaries = summaries,
-                                selectedIndex = defaultIndex
-                            )
-                        )
-                    } else {
-                        components?.clear()
-                    }
                 }
-                content = ""
             }
         } else {
             logger.warn("원본 응답이 없어 최종 결과를 신규 응답으로 전송합니다.")
             response.respond {
+                messageFlags { +MessageFlag.IsComponentsV2 }
+                content = null
+                embeds = null
                 if (summaries.isEmpty()) {
-                    embeds = mutableListOf(
-                        buildNoClearRankingEmbed(
+                    components = mutableListOf(
+                        buildNoClearRankingContainer(
                             raidName = currentTopSavageZone.zoneName,
                             name = name,
                             server = server
                         )
                     )
-                    components?.clear()
                 } else {
                     val defaultIndex = 0
                     val selectedSummary = summaries[defaultIndex]
@@ -237,25 +235,13 @@ class FFLogFeature(
                         summaries = summaries
                     )
 
-                    embeds = mutableListOf(
-                        buildRankingEmbed(
-                            session = rankingSelectSessions.getValue(sessionId),
-                            selectedSummary = selectedSummary
-                        )
+                    components = buildRankingComponents(
+                        session = rankingSelectSessions.getValue(sessionId),
+                        selectedSummary = selectedSummary,
+                        sessionId = sessionId,
+                        selectedIndex = defaultIndex
                     )
-                    if (summaries.size > 1) {
-                        components = mutableListOf(
-                            buildRankingSelectActionRow(
-                                sessionId = sessionId,
-                                summaries = summaries,
-                                selectedIndex = defaultIndex
-                            )
-                        )
-                    } else {
-                        components?.clear()
-                    }
                 }
-                content = ""
             }
         }
     }
@@ -290,31 +276,53 @@ class FFLogFeature(
         return fflogRanking
     }
 
-    private fun buildRankingEmbed(
+    private fun buildRankingContainer(
         session: RankingSelectSession,
         selectedSummary: FFlogRankingSummary
-    ): EmbedBuilder = EmbedBuilder().apply {
-        title = session.raidName
-        description = """
-            이름: ${session.name}
-            서버: ${session.server}
+    ): ContainerBuilder {
+        val colorTier = FFlogParseColorTier.fromAllStarPercent(selectedSummary.allStarPercentValueOrNull())
+        return ContainerBuilder().apply {
+            accentColor = colorTier.accentColor
+            textDisplay(
+                """
+                ## ${session.raidName}
+                이름: ${session.name}
+                서버: ${session.server}
 
-            ${selectedSummary.toDetailDescriptionWithoutIdentity()}
-        """.trimIndent()
+                ${selectedSummary.toDetailDescriptionWithoutIdentity()}
+                파스 색상 등급: ${colorTier.label}
+                """.trimIndent()
+            )
+        }
     }
 
-    private fun buildNoClearRankingEmbed(
+    private fun buildNoClearRankingContainer(
         raidName: String,
         name: String,
         server: String
-    ): EmbedBuilder = EmbedBuilder().apply {
-        title = raidName
-        description = """
+    ): ContainerBuilder = ContainerBuilder().apply {
+        accentColor = FFlogParseColorTier.GRAY.accentColor
+        textDisplay(
+            """
+            ## $raidName
             이름: $name
             서버: $server
 
             클리어 기록 없음
-        """.trimIndent()
+            """.trimIndent()
+        )
+    }
+
+    private fun buildRankingComponents(
+        session: RankingSelectSession,
+        selectedSummary: FFlogRankingSummary,
+        sessionId: String,
+        selectedIndex: Int
+    ): MutableList<MessageComponentBuilder> = mutableListOf<MessageComponentBuilder>().apply {
+        add(buildRankingContainer(session, selectedSummary))
+        if (session.summaries.size > 1) {
+            add(buildRankingSelectActionRow(sessionId, session.summaries, selectedIndex))
+        }
     }
 
     private fun buildRankingSelectActionRow(
