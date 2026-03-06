@@ -91,7 +91,7 @@ data class FFlogRankingSummary(
         return when {
             displayInfo != null -> "${displayInfo.emoji} ${displayInfo.koreanName}"
             job != null -> job
-            else -> "직업: N/A"
+            else -> "N/A"
         }
     }
 
@@ -121,6 +121,8 @@ data class FFlogRankingSummary(
 
     fun allStarPointValueOrDefault(default: Double = -1.0): Double =
         allStarPoint?.substringBefore("/")?.trim()?.toDoubleOrNull() ?: default
+
+    fun allStarPercentValueOrNull(): Double? = allStarPercent?.toDoubleOrNull()
 
 
 }
